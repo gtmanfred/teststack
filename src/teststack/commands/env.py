@@ -15,20 +15,20 @@ def get_placeholders(value):
 def export(ctx):
     envvars = []
     client = docker.from_env()
-    for service, data in ctx.obj["config"].items():
+    for service, data in ctx.obj['config'].items():
         name = f'{ctx.obj["project_name"]}_{service}'
         try:
             container = client.containers.get(name)
         except docker.errors.NotFound:
             continue
-        container_data = data["environment"].copy()
-        container_data["HOST"] = "localhost"
-        for port, port_data in container.attrs["NetworkSettings"]["Ports"].items():
-            container_data[f"PORT;{port}"] = port_data[0]["HostPort"]
-        for key, value in data["export"].items():
+        container_data = data['environment'].copy()
+        container_data['HOST'] = 'localhost'
+        for port, port_data in container.attrs['NetworkSettings']['Ports'].items():
+            container_data[f'PORT;{port}'] = port_data[0]['HostPort']
+        for key, value in data['export'].items():
             envvars.append(
-                f"export {key}={value}".format_map(
+                f'export {key}={value}'.format_map(
                     container_data,
                 )
             )
-    print("\n".join(envvars))
+    print('\n'.join(envvars))
