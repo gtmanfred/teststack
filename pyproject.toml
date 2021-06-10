@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=42", "wheel", "setuptools_scm[toml]>=3.4"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools_scm]
+write_to = "src/teststack/_version.py"
+
+[tool.coverage.run]
+branch = true
+omit = ["tests/"]
+source = ["teststack"]
+
+[tool.coverage.paths]
+source = ["src", ".tox/*/site-packages"]
+
+[tool.coverage.report]
+skip_covered = false
+
+[tool.coverage.xml]
+output = "coverage.xml"
+
+[tool.pytest.ini_options]
+addopts = "-ra"
+log_cli_level = "critical"
+junit_family = "xunit2"
+testpaths = "tests/"
+norecursedirs = ".git .tox"
