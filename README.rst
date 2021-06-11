@@ -6,7 +6,7 @@ Test an application with infrastructure.
 teststack.toml
 --------------
 
-.. code-block: toml
+.. code-block:: toml
 
     [tests.steps]
     ping = "ping -c4 8.8.8.8"
@@ -41,7 +41,7 @@ variables for customization. The `tests.steps` section specifies which steps
 should be run on a test machine. Any unprocessed commandline arguments that are
 passed into teststack are stuck into commands as `posargs`.
 
-.. code-block: bash
+.. code-block:: bash
 
     teststack render
     teststack build
@@ -56,7 +56,7 @@ that it can be configured. In this case, we set the username, password and db
 for the database. The three commands around the services are start, stop and
 restart, they do what they say.
 
-.. code-block:
+.. code-block:: bash
 
     teststack start
     teststack stop
