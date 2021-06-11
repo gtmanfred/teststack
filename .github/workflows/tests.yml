@@ -11,7 +11,7 @@ jobs:
         python-version: [3.6, 3.7, 3.8, 3.9]
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v1
 
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v2
@@ -23,10 +23,10 @@ jobs:
         set -xe
         python -m site
         python -m pip install -U pip setuptools wheel
-        python -m pip install -U coverage[toml] virtualenv tox tox-gh-actions
+        python -m pip install -U coverage[toml] virtualenv tox
 
     - name: Unit tests
-      run: python -m tox -r
+      run: python -m tox -e py3
 
     - name: Code coverage
       run: python -m tox -e report
