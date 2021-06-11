@@ -11,8 +11,17 @@ def get_placeholders(value):
 
 
 @cli.command()
+@click.option(
+    '--no-export',
+    '-n',
+    is_flag=True,
+    default=False,
+    help='do not include the export command with environment variables',
+)
+@click.option('--inside', is_flag=True, default=False, help='Export variables for inside a docker container')
+@click.option('--quiet', '-q', is_flag=True, help='Do not print out information')
 @click.pass_context
-def export(ctx):
+def env(ctx, no_export, inside, quiet):
     envvars = []
     client = docker.from_env()
     for service, data in ctx.obj['config'].items():
@@ -22,13 +31,15 @@ def export(ctx):
         except docker.errors.NotFound:
             continue
         container_data = data['environment'].copy()
-        container_data['HOST'] = 'localhost'
+        container_data['HOST'] = container.attrs['NetworkSettings']['IPAddress'] if inside else 'localhost'
         for port, port_data in container.attrs['NetworkSettings']['Ports'].items():
-            container_data[f'PORT;{port}'] = port_data[0]['HostPort']
+            container_data[f'PORT;{port}'] = port.split('/')[0] if inside else port_data[0]['HostPort']
         for key, value in data['export'].items():
             envvars.append(
-                f'export {key}={value}'.format_map(
+                f'{"" if no_export else "export "}{key}={value}'.format_map(
                     container_data,
                 )
             )
-    print('\n'.join(envvars))
+    if quiet is False:
+        click.echo('\n'.join(envvars))
+    return envvars

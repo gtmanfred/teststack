@@ -1,0 +1,3 @@
+{% set  version = TOX_ENV_NAME[2] ~ '.' ~ TOX_ENV_NAME[3:] -%}
+FROM python:{{version}}
+WORKDIR /teststack/

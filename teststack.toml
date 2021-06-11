@@ -1,3 +1,9 @@
+[service]
+commands = [
+    "ping -c4 8.8.8.8",
+    "env",
+]
+
 [database]
 image = "postgres:12"
 
