@@ -12,17 +12,25 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
+
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python-version }}
+
     - name: Install Dependencies
       run: |
-        python -m pip install tox-gh-actions
+        set -xe
+        python -m site
+        python -m pip install -U pip setuptools wheel
+        python -m pip install -U coverage[toml] virtualenv tox tox-gh-actions
+
     - name: Unit tests
-      run: tox
+      run: python -m tox
+
     - name: Code coverage
-      run: tox -e report
+      run: python -m tox -e report
+
     - name: Codecov.io
       uses: codecov/codecov-action@v1
       with:
