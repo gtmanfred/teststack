@@ -53,6 +53,7 @@ def cli(ctx, config, project_name):
             ]
         )
         ctx.obj['tag'] = tag
+        ctx.obj['commit'] = repo.head.commit.hexsha
     except git.exc.InvalidGitRepositoryError:
         ctx.obj['tag'] = ':'.join(
             [

@@ -66,14 +66,13 @@ def restart(ctx):
 @click.option(
     '--template-file',
     '-t',
-    type=click.Path(exists=True),
+    type=click.File(),
     default='Dockerfile.j2',
     help='template to render with jinja',
 )
-@click.option(
-    '--docker-file', '-f', type=click.Path(exists=False), default='Dockerfile', help='dockerfile to write too'
-)
-def render(template_file, docker_file):
+@click.option('--docker-file', '-f', type=click.Path(), default='Dockerfile', help='dockerfile to write too')
+@click.pass_context
+def render(ctx, template_file, docker_file):
     env = jinja2.Environment(
         extensions=[
             'jinja2.ext.i18n',
@@ -85,7 +84,24 @@ def render(template_file, docker_file):
         loader=jinja2.FileSystemLoader(os.getcwd()),
     )
 
-    template = env.get_template(template_file)
+    template_string = template_file.read()
+
+    if 'commit' in ctx.obj:
+        template_string = '\n'.join(
+            [
+                template_string,
+                f'RUN echo "app-git-hash: {ctx.obj["commit"]} >> /etc/docker-metadata"',
+                f'ENV APP_GIT_HASH={ctx.obj["commit"]}\n',
+            ]
+        )
+
+    template = env.from_string(
+        '\n'.join(
+            [
+                template_string,
+            ]
+        ),
+    )
     template.stream(**os.environ).dump(docker_file)
 
 
@@ -149,10 +165,10 @@ def run(ctx, step, posargs):
     else:
         commands = list(steps.values())
     for command in commands:
-        click.echo(f'Run Command: {command}')
         command = command.format(
             posargs=' '.join(posargs),
         )
+        click.echo(f'Run Command: {command}')
         socket = container.exec_run(
             cmd=command,
             tty=True,
