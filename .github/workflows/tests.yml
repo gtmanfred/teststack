@@ -26,7 +26,7 @@ jobs:
         python -m pip install -U coverage[toml] virtualenv tox tox-gh-actions
 
     - name: Unit tests
-      run: python -m tox
+      run: python -m tox -r
 
     - name: Code coverage
       run: python -m tox -e report
