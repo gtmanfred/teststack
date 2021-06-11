@@ -20,6 +20,7 @@ jobs:
 
     - name: Install Dependencies
       run: |
+        find .
         python -m site
         python -m pip install .[tests]
 
