@@ -23,10 +23,10 @@ def start(ctx):
             continue
         client.containers.run(
             image=data['image'],
-            ports=data['ports'],
+            ports=data.get('ports', {}),
             detach=True,
             name=name,
-            environment=data['environment'],
+            environment=data.get('environment', {}),
         )
 
 
