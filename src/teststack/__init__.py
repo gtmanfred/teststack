@@ -63,6 +63,14 @@ def cli(ctx, config, project_name):
 
 
 def import_commands():
+    import subprocess
+
+    print(
+        subprocess.run(
+            'find {path}'.format(path=os.path.dirname(__file__)),
+            shell=True,
+        )
+    )
     group = 'teststack.commands'
     entries = entry_points()
 
