@@ -1,15 +1,14 @@
 import os.path
 import pathlib
 
-try:
-    from importlib import metadata
-except ImportError:
-    metadata = None
-    import pkg_resources
-
 import click
 import git.exc
 import toml
+
+try:
+    from importlib.metadata import entry_points
+except ImportError:
+    from backports.entry_points_selectable import entry_points
 
 try:
     from ._version import version as __version__
@@ -65,7 +64,14 @@ def cli(ctx, config, project_name):
 
 def import_commands():
     group = 'teststack.commands'
-    for entry_point in metadata.entry_points().get(group, []) if metadata else pkg_resources.iter_entry_points(group):
+    entries = entry_points()
+
+    if hasattr(entries, 'select'):
+        entries = entries.select(group=group)
+    else:
+        entries = entries.get(group, [])
+
+    for entry_point in entries:
         entry_point.load()
 
 
