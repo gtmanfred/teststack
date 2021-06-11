@@ -139,7 +139,11 @@ def run(ctx, step, posargs):
 
     client = docker.from_env()
 
-    image = client.images.get(ctx.obj['tag'])
+    try:
+        image = client.images.get(ctx.obj['tag'])
+    except docker.errors.NotFound:
+        image = client.images.get(ctx.invoke(build))
+
     name = f'{ctx.obj["project_name"]}_tests'
     try:
         container = client.containers.get(name)
