@@ -8,9 +8,8 @@ except ImportError:
     import pkg_resources
 
 import click
-import git
-
-from teststack.config import get_config
+import git.exc
+import toml
 
 try:
     from ._version import version as __version__
@@ -27,7 +26,7 @@ except ImportError:
 @click.option(
     '--config',
     '-c',
-    type=pathlib.Path,
+    type=click.File(),
     default='teststack.toml',
     help='Location of teststack config.',
 )
@@ -40,18 +39,27 @@ except ImportError:
 @click.pass_context
 def cli(ctx, config, project_name):
     ctx.ensure_object(dict)
-    ctx.obj['config'] = get_config(config)
+    ctx.obj['config'] = toml.load(config)
+    ctx.obj['services'] = ctx.obj['config'].get('services', {})
     ctx.obj['project_name'] = project_name
 
-    repo = git.Repo('.')
-    name = pathlib.Path(repo.remote('origin').url)
-    tag = ':'.join(
-        [
-            name.with_suffix('').name,
-            repo.head.commit.hexsha,
-        ]
-    )
-    ctx.obj['tag'] = tag
+    try:
+        repo = git.Repo('.')
+        name = pathlib.Path(repo.remote('origin').url)
+        tag = ':'.join(
+            [
+                name.with_suffix('').name,
+                repo.head.commit.hexsha,
+            ]
+        )
+        ctx.obj['tag'] = tag
+    except git.exc.InvalidGitRepositoryError:
+        ctx.obj['tag'] = ':'.join(
+            [
+                os.path.basename(os.getcwd()),
+                'latest',
+            ]
+        )
 
 
 def import_commands():

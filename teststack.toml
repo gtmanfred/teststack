@@ -1,21 +1,19 @@
-[service]
-commands = [
-    "ping -c4 8.8.8.8",
-    "env",
-]
+[tests.commands]
+ping = "ping -c4 8.8.8.8"
+env = "env"
 
-[database]
+[services.database]
 image = "postgres:12"
 
-[database.ports]
+[services.database.ports]
 "5432/tcp" = ""
 
-[database.environment]
+[services.database.environment]
 POSTGRES_USER = "bebop"
 POSTGRES_PASSWORD = "secret"
 POSTGRES_DB = "bebop"
 
-[database.export]
+[services.database.export]
 SQLALCHEMY_DATABASE_URI = "postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{HOST}:{PORT;5432/tcp}/{POSTGRES_DB}"
 POSTGRES_MAIN_USER = "{POSTGRES_USER}"
 POSTGRES_MAIN_PASSWORD = "{POSTGRES_USER}"

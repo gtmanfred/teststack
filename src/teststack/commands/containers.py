@@ -13,9 +13,7 @@ from teststack import cli
 @click.pass_context
 def start(ctx):
     client = docker.from_env()
-    for service, data in ctx.obj['config'].items():
-        if service.startswith('service'):
-            continue
+    for service, data in ctx.obj['services'].items():
         name = f'{ctx.obj["project_name"]}_{service}'
         try:
             container = client.containers.get(name)
@@ -32,18 +30,29 @@ def start(ctx):
         )
 
 
+def end_container(container):
+    container.stop()
+    container.wait()
+    container.remove(v=True)
+
+
 @cli.command()
 @click.pass_context
 def stop(ctx):
     client = docker.from_env()
-    for service, _ in ctx.obj['config'].items():
-        name = f'{ctx.obj["project_name"]}_{service}'
+    project_name = ctx.obj["project_name"]
+    for service, _ in ctx.obj['services'].items():
+        name = f'{project_name}_{service}'
         try:
             container = client.containers.get(name)
         except docker.errors.NotFound:
             return
-        container.stop()
-        container.remove()
+        end_container(container)
+    try:
+        container = client.containers.get(f'{project_name}_tests')
+    except docker.errors.NotFound:
+        return
+    end_container(container)
 
 
 @cli.command()
@@ -105,17 +114,17 @@ def build(ctx, rebuild, tag):
 
 
 @cli.command()
-@click.option('--keep', '-k', is_flag=True, help='Keep container around')
-@click.argument('command', nargs=-1, type=click.UNPROCESSED)
+@click.option('--step', '-s', help='Which step to run')
+@click.argument('posargs', nargs=-1, type=click.UNPROCESSED)
 @click.pass_context
-def run(ctx, command, keep):
+def run(ctx, step, posargs):
     ctx.invoke(start)
     env = ctx.invoke(cli.get_command(ctx, 'env'), inside=True, no_export=True, quiet=True)
 
     client = docker.from_env()
 
     image = client.images.get(ctx.obj['tag'])
-    name = f'{ctx.obj["project_name"]}_service'
+    name = f'{ctx.obj["project_name"]}_tests'
     try:
         container = client.containers.get(name)
     except docker.errors.NotFound:
@@ -134,9 +143,16 @@ def run(ctx, command, keep):
                 },
             },
         )
-
-    for command in [' '.join(command)] or ctx.obj['config'].get('service', {}).get('commands', []):
+    steps = ctx.obj['config'].get('tests', {}).get('steps', {})
+    if step:
+        commands = [steps.get(step, '{posargs}')]
+    else:
+        commands = list(steps.values())
+    for command in commands:
         click.echo(f'Run Command: {command}')
+        command = command.format(
+            posargs=' '.join(posargs),
+        )
         socket = container.exec_run(
             cmd=command,
             tty=True,
@@ -145,8 +161,3 @@ def run(ctx, command, keep):
 
         for line in socket.output:
             click.echo(line, nl=False)
-
-    if keep is False:
-        container.stop()
-        container.wait()
-        container.remove(v=True)

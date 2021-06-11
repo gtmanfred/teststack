@@ -24,7 +24,7 @@ def get_placeholders(value):
 def env(ctx, no_export, inside, quiet):
     envvars = []
     client = docker.from_env()
-    for service, data in ctx.obj['config'].items():
+    for service, data in ctx.obj['services'].items():
         name = f'{ctx.obj["project_name"]}_{service}'
         try:
             container = client.containers.get(name)
