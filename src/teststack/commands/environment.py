@@ -30,11 +30,11 @@ def env(ctx, no_export, inside, quiet):
             container = client.containers.get(name)
         except docker.errors.NotFound:
             continue
-        container_data = data['environment'].copy()
+        container_data = data.get('environment', {}).copy()
         container_data['HOST'] = container.attrs['NetworkSettings']['IPAddress'] if inside else 'localhost'
         for port, port_data in container.attrs['NetworkSettings']['Ports'].items():
             container_data[f'PORT;{port}'] = port.split('/')[0] if inside else port_data[0]['HostPort']
-        for key, value in data['export'].items():
+        for key, value in data.get('export', {}).items():
             envvars.append(
                 f'{"" if no_export else "export "}{key}={value}'.format_map(
                     container_data,

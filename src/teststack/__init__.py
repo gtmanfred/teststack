@@ -8,6 +8,7 @@ except ImportError:
     import pkg_resources
 
 import click
+import git
 
 from teststack.config import get_config
 
@@ -41,6 +42,16 @@ def cli(ctx, config, project_name):
     ctx.ensure_object(dict)
     ctx.obj['config'] = get_config(config)
     ctx.obj['project_name'] = project_name
+
+    repo = git.Repo('.')
+    name = pathlib.Path(repo.remote('origin').url)
+    tag = ':'.join(
+        [
+            name.with_suffix('').name,
+            repo.head.commit.hexsha,
+        ]
+    )
+    ctx.obj['tag'] = tag
 
 
 def import_commands():
