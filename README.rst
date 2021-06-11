@@ -33,13 +33,13 @@ teststack.toml
     POSTGRES_MAIN_PORT = "{PORT;5432/tcp}"
     POSTGRES_MAIN_DBNAME = "{POSTGRES_DB}"
 
-There are two main sections: `tests` and `services`.
+There are two main sections: ``tests`` and ``services``.
 
-The `test` section is for information about the docker container that is going
-to be used for testing. It renders the `Dockerfile.j2`, and injects environment
-variables for customization. The `tests.steps` section specifies which steps
+The ``test`` section is for information about the docker container that is going
+to be used for testing. It renders the ``Dockerfile.j2``, and injects environment
+variables for customization. The ``tests.steps`` section specifies which steps
 should be run on a test machine. Any unprocessed commandline arguments that are
-passed into teststack are stuck into commands as `posargs`.
+passed into teststack are stuck into commands as ``posargs``.
 
 .. code-block:: bash
 
@@ -48,7 +48,7 @@ passed into teststack are stuck into commands as `posargs`.
     teststack run -s raw -- pytest -k mytest
     teststack stop
 
-The `services` section specifies the services that need to be started along side
+The ``services`` section specifies the services that need to be started along side
 a test container.  In this example, a postgres container is started.  Then the
 ports specify which ports need to be exposed, so 5432/tcp. And what environment
 variables should be passed to the service docker container when starting up, so
@@ -64,10 +64,10 @@ restart, they do what they say.
 
 Everything that is set in the environment section is available when exporting.
 The other special variables that are made available is the HOST of the docker
-container. By default, the `env` command exports `localhost` for the `{HOST}`
+container. By default, the ``env`` command exports ``localhost`` for the ``{HOST}``
 variable. And then the port that is exported has the number appended after a
-semicolon. So if you have specified `5432/tcp` as a port for a service
-container, the variable `{PORT;5432/tcp}` will be made available for exporting,
+semicolon. So if you have specified ``5432/tcp`` as a port for a service
+container, the variable ``{PORT;5432/tcp}`` will be made available for exporting,
 or to add to connection strings.
 
 If however, the env is being used to start a test container (like run does) the
@@ -75,8 +75,17 @@ HOST variable will be the default docker network IPAddress of the container, and
 the port will be just the port, and not adapted to the forwarding port on the
 Host network.
 
+If you choose to run tests locally, instead of in the tests container, you can
+export the environment variables for the stack and source them or put them in a
+file for something like vscode to read.
+
+.. code-block:: bash
+
+    $ source <(teststack env)
+    $ teststack env --no-export > .env
+
 Tests
 -----
 
-Once I can figure out why github actions do not want to install the `commands`
+Once I can figure out why github actions do not want to install the ``commands``
 directory, I will write more tests.
