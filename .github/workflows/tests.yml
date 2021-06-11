@@ -20,18 +20,16 @@ jobs:
 
     - name: Install Dependencies
       run: |
-        set -xe
         python -m site
-        python -m pip install -U pip setuptools wheel
-        python -m pip install -U coverage[toml] virtualenv tox
-        python setup.py bdist_wheel
-        unzip -l dist/teststack-*.whl
+        python -m pip install .[tests]
 
     - name: Unit tests
-      run: python -m tox -e py3
+      run: coverage run -m pytest -v
 
     - name: Code coverage
-      run: python -m tox -e report
+      run: |
+        coverage report
+        coverage xml
 
     - name: Codecov.io
       uses: codecov/codecov-action@v1
