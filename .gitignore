@@ -5,6 +5,8 @@ __pycache__/
 _version.py
 /build
 /dist
+/.venv
+/.python-version
 
 # coverage files
 /htmlcov
