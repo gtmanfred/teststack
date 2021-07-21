@@ -155,6 +155,9 @@ def run(ctx, step, posargs):
     name = f'{ctx.obj["project_name"]}_tests'
     try:
         container = client.containers.get(name)
+        if container.image.id != image.id:
+            end_container(container)
+            raise docker.errors.NotFound(message='Old Image')
     except docker.errors.NotFound:
         container = client.containers.run(
             image=image,
