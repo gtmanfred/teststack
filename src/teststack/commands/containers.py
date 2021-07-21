@@ -1,6 +1,5 @@
 import json
 import os.path
-import pathlib
 
 import click
 import docker.errors
@@ -127,6 +126,15 @@ def build(ctx, rebuild, tag):
                 click.echo(data['stream'], nl=False)
 
     return tag
+
+
+@cli.command()
+@click.pass_context
+def exec(ctx):
+    client = docker.from_env()
+    name = f'{ctx.obj["project_name"]}_tests'
+    container = client.containers.get(name)
+    os.execvp('docker', ['docker', 'exec', '-ti', container.id, 'bash'])
 
 
 @cli.command()
