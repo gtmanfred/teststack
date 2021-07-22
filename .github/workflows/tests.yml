@@ -21,15 +21,10 @@ jobs:
     - name: Install Dependencies
       run: |
         python -m site
-        python -m pip install .[tests]
+        python -m pip install tox tox-gh-actions
 
     - name: Unit tests
-      run: coverage run -m pytest -v
-
-    - name: Code coverage
-      run: |
-        coverage report
-        coverage xml
+      run: tox
 
     - name: Codecov.io
       uses: codecov/codecov-action@v1
