@@ -22,10 +22,9 @@ jobs:
       run: |
         python -m site
         python -m pip install tox tox-gh-actions
-        find .
 
     - name: Unit tests
-      run: tox -r
+      run: tox
 
     - name: Codecov.io
       uses: codecov/codecov-action@v1
