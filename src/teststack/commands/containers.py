@@ -18,7 +18,7 @@ def start(ctx, no_tests):
         name = f'{ctx.obj["project_name"]}_{service}'
         try:
             container = client.containers.get(name)
-        except docker.errors.NotFound:
+        except (docker.errors.NotFound, docker.errors.APIError):
             container = None
         if container:
             continue
@@ -36,7 +36,7 @@ def start(ctx, no_tests):
     env = ctx.invoke(cli.get_command(ctx, 'env'), inside=True, no_export=True, quiet=True)
     try:
         image = client.images.get(ctx.obj['tag'])
-    except docker.errors.NotFound:
+    except (docker.errors.NotFound, docker.errors.APIError):
         image = client.images.get(ctx.invoke(build))
 
     name = f'{ctx.obj["project_name"]}_tests'
@@ -45,7 +45,7 @@ def start(ctx, no_tests):
         if container.image.id != image.id:
             end_container(container)
             raise docker.errors.NotFound(message='Old Image')
-    except docker.errors.NotFound:
+    except (docker.errors.NotFound, docker.errors.APIError):
 
         command = ctx.obj['tests'].get('command', None)
         if command is None:
@@ -84,12 +84,12 @@ def stop(ctx):
         name = f'{project_name}_{service}'
         try:
             container = client.containers.get(name)
-        except docker.errors.NotFound:
+        except (docker.errors.NotFound, docker.errors.APIError):
             return
         end_container(container)
     try:
         container = client.containers.get(f'{project_name}_tests')
-    except docker.errors.NotFound:
+    except (docker.errors.NotFound, docker.errors.APIError):
         return
     end_container(container)
 
