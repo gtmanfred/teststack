@@ -38,8 +38,9 @@ except ImportError:
 @click.pass_context
 def cli(ctx, config, project_name):
     ctx.ensure_object(dict)
-    ctx.obj['config'] = toml.load(config)
-    ctx.obj['services'] = ctx.obj['config'].get('services', {})
+    config = toml.load(config)
+    ctx.obj['services'] = config.get('services', {})
+    ctx.obj['tests'] = config.get('tests', {})
     ctx.obj['project_name'] = project_name
 
     try:

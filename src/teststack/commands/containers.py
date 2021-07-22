@@ -9,8 +9,9 @@ from teststack import cli
 
 
 @cli.command()
+@click.option('--no-tests', '-n', is_flag=True, help='Don\'t start the tests container')
 @click.pass_context
-def start(ctx):
+def start(ctx, no_tests):
     client = docker.from_env()
     for service, data in ctx.obj['services'].items():
         name = f'{ctx.obj["project_name"]}_{service}'
@@ -27,6 +28,44 @@ def start(ctx):
             name=name,
             environment=data.get('environment', {}),
         )
+
+    if no_tests is True:
+        return
+
+    env = ctx.invoke(cli.get_command(ctx, 'env'), inside=True, no_export=True, quiet=True)
+    try:
+        image = client.images.get(ctx.obj['tag'])
+    except docker.errors.NotFound:
+        image = client.images.get(ctx.invoke(build))
+
+    name = f'{ctx.obj["project_name"]}_tests'
+    try:
+        container = client.containers.get(name)
+        if container.image.id != image.id:
+            end_container(container)
+            raise docker.errors.NotFound(message='Old Image')
+    except docker.errors.NotFound:
+
+        command = ctx.obj['tests'].get('command', None)
+        if command is None:
+            command = "sh -c 'trap \"trap - TERM; kill -s TERM -- -$$\" TERM; tail -f /dev/null & wait'"
+
+        container = client.containers.run(
+            image=image,
+            stream=True,
+            name=name,
+            user=0,
+            environment=env,
+            command=command,
+            detach=True,
+            volumes={
+                os.getcwd(): {
+                    'bind': image.attrs['Config']['WorkingDir'],
+                    'mode': 'rw',
+                },
+            },
+        )
+    return container
 
 
 def end_container(container):
@@ -131,9 +170,7 @@ def build(ctx, rebuild, tag):
 @cli.command()
 @click.pass_context
 def exec(ctx):
-    client = docker.from_env()
-    name = f'{ctx.obj["project_name"]}_tests'
-    container = client.containers.get(name)
+    container = ctx.invoke(start)
     os.execvp('docker', ['docker', 'exec', '-ti', container.id, 'bash'])
 
 
@@ -142,39 +179,9 @@ def exec(ctx):
 @click.argument('posargs', nargs=-1, type=click.UNPROCESSED)
 @click.pass_context
 def run(ctx, step, posargs):
-    ctx.invoke(start)
-    env = ctx.invoke(cli.get_command(ctx, 'env'), inside=True, no_export=True, quiet=True)
+    container = ctx.invoke(start)
 
-    client = docker.from_env()
-
-    try:
-        image = client.images.get(ctx.obj['tag'])
-    except docker.errors.NotFound:
-        image = client.images.get(ctx.invoke(build))
-
-    name = f'{ctx.obj["project_name"]}_tests'
-    try:
-        container = client.containers.get(name)
-        if container.image.id != image.id:
-            end_container(container)
-            raise docker.errors.NotFound(message='Old Image')
-    except docker.errors.NotFound:
-        container = client.containers.run(
-            image=image,
-            stream=True,
-            name=name,
-            user=0,
-            environment=env,
-            command='tail -f /dev/null',
-            detach=True,
-            volumes={
-                os.getcwd(): {
-                    'bind': image.attrs['Config']['WorkingDir'],
-                    'mode': 'rw',
-                },
-            },
-        )
-    steps = ctx.obj['config'].get('tests', {}).get('steps', {})
+    steps = ctx.obj['tests'].get('steps', {})
     if step:
         commands = [steps.get(step, '{posargs}')]
     else:
