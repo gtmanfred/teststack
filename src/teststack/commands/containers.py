@@ -1,5 +1,6 @@
 import json
 import os.path
+import pathlib
 
 import click
 import docker.errors
@@ -108,9 +109,9 @@ def restart(ctx):
     default='Dockerfile.j2',
     help='template to render with jinja',
 )
-@click.option('--docker-file', '-f', type=click.Path(), default='Dockerfile', help='dockerfile to write too')
+@click.option('--dockerfile', '-f', type=click.Path(), default='Dockerfile', help='dockerfile to write too')
 @click.pass_context
-def render(ctx, template_file, docker_file):
+def render(ctx, template_file, dockerfile):
     env = jinja2.Environment(
         extensions=[
             'jinja2.ext.i18n',
@@ -140,15 +141,17 @@ def render(ctx, template_file, docker_file):
             ]
         ),
     )
-    template.stream(**os.environ).dump(docker_file)
+    template.stream(**os.environ).dump(dockerfile)
 
 
 @cli.command()
 @click.option('--rebuild', '-r', is_flag=True, help='ignore cache and rebuild the container fully')
 @click.option('--tag', '-t', default=None, help='Tag to label the build')
+@click.option('--dockerfile', '-f', type=pathlib.Path, default='Dockerfile', help='dockerfile to write too')
 @click.pass_context
-def build(ctx, rebuild, tag):
-    ctx.invoke(render)
+def build(ctx, rebuild, tag, dockerfile):
+    if rebuild is False and dockerfile.exists() is False:
+        ctx.invoke(render, dockerfile=dockerfile)
     client = docker.from_env()
 
     if tag is None:
@@ -156,7 +159,7 @@ def build(ctx, rebuild, tag):
 
     click.echo(f'Build Image: {tag}')
 
-    for chunk in client.api.build(path='.', tag=tag, nocache=rebuild, rm=True):
+    for chunk in client.api.build(path='.', dockerfile=dockerfile, tag=tag, nocache=rebuild, rm=True):
         for line in chunk.split(b'\r\n'):
             if not line:
                 continue
