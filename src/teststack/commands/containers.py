@@ -150,8 +150,7 @@ def render(ctx, template_file, dockerfile):
 @click.option('--dockerfile', '-f', type=pathlib.Path, default='Dockerfile', help='dockerfile to write too')
 @click.pass_context
 def build(ctx, rebuild, tag, dockerfile):
-    if rebuild is False and dockerfile.exists() is False:
-        ctx.invoke(render, dockerfile=dockerfile)
+    ctx.invoke(render, dockerfile=dockerfile)
     client = docker.from_env()
 
     if tag is None:
