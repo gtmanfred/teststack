@@ -1,8 +1,8 @@
 __pycache__/
 *.swp
-_*.py
 /.tox/
 /Dockerfile
+_version.py
 
 # coverage files
 /htmlcov
