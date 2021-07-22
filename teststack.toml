@@ -2,6 +2,10 @@
 ping = "ping -c4 8.8.8.8"
 env = "env"
 
+[tests.environment]
+AWS_ACCESS_KEY_ID = "keyid"
+AWS_SECRET_ACCESS_KEY = "secret"
+
 [services.database]
 image = "postgres:12"
 
@@ -16,8 +20,20 @@ POSTGRES_DB = "bebop"
 [services.database.export]
 SQLALCHEMY_DATABASE_URI = "postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{HOST}:{PORT;5432/tcp}/{POSTGRES_DB}"
 POSTGRES_MAIN_USER = "{POSTGRES_USER}"
-POSTGRES_MAIN_PASSWORD = "{POSTGRES_USER}"
+POSTGRES_MAIN_PASSWORD = "{POSTGRES_PASSWORD}"
 POSTGRES_MAIN_HOST = "{POSTGRES_USER}"
 POSTGRES_MAIN_RDS_HOST = "{POSTGRES_USER}"
 POSTGRES_MAIN_PORT = "{PORT;5432/tcp}"
 POSTGRES_MAIN_DBNAME = "{POSTGRES_DB}"
+
+[services.rabbit]
+image = "rabbitmq:3.8"
+
+[services.rabbit.ports]
+"5672/tcp" = ""
+"15672/tcp" = ""
+
+[services.rabbit.environment]
+
+[services.rabbit.export]
+BROKER_URL = "amqp://guest:guest@{HOST}:{PORT;5672/tcp}//"

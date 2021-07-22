@@ -3,6 +3,8 @@ __pycache__/
 /.tox/
 /Dockerfile
 _version.py
+/build
+/dist
 
 # coverage files
 /htmlcov

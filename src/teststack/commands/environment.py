@@ -6,10 +6,6 @@ import docker
 from teststack import cli
 
 
-def get_placeholders(value):
-    return [name for text, name, spec, conv in string.Formatter().parse(value)]
-
-
 @cli.command()
 @click.option(
     '--no-export',
@@ -43,6 +39,8 @@ def env(ctx, no_export, inside, quiet):
                     container_data,
                 )
             )
+    for key, value in ctx.obj['tests'].get('environment', {}).items():
+        envvars.append(f'{"" if no_export else "export "}{key}={value}')
     if quiet is False:
         click.echo('\n'.join(envvars))
     return envvars

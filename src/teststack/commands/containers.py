@@ -147,7 +147,7 @@ def render(ctx, template_file, dockerfile):
 @cli.command()
 @click.option('--rebuild', '-r', is_flag=True, help='ignore cache and rebuild the container fully')
 @click.option('--tag', '-t', default=None, help='Tag to label the build')
-@click.option('--dockerfile', '-f', type=pathlib.Path, default='Dockerfile', help='dockerfile to write too')
+@click.option('--dockerfile', '-f', type=click.Path(), default='Dockerfile', help='dockerfile to write too')
 @click.pass_context
 def build(ctx, rebuild, tag, dockerfile):
     ctx.invoke(render, dockerfile=dockerfile)
