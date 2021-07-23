@@ -1,9 +1,9 @@
 import os.path
-import pathlib
 
 import click
-import git.exc
 import toml
+
+from . import git
 
 try:
     from importlib.metadata import entry_points
@@ -12,7 +12,7 @@ except ImportError:
 
 try:
     from ._version import version as __version__
-except ImportError:
+except ImportError:  # pragma: no cover
     try:
         from setuptools_scm import get_version
 
@@ -42,25 +42,7 @@ def cli(ctx, config, project_name):
     ctx.obj['services'] = config.get('services', {})
     ctx.obj['tests'] = config.get('tests', {})
     ctx.obj['project_name'] = project_name
-
-    try:
-        repo = git.Repo('.')
-        name = pathlib.Path(repo.remote('origin').url)
-        tag = ':'.join(
-            [
-                name.with_suffix('').name,
-                repo.head.commit.hexsha,
-            ]
-        )
-        ctx.obj['tag'] = tag
-        ctx.obj['commit'] = repo.head.commit.hexsha
-    except git.exc.InvalidGitRepositoryError:
-        ctx.obj['tag'] = ':'.join(
-            [
-                os.path.basename(os.getcwd()),
-                'latest',
-            ]
-        )
+    ctx.obj.update(git.get_tag())
 
 
 def import_commands():
@@ -76,6 +58,6 @@ def import_commands():
         entry_point.load()
 
 
-def main():
+def main():  # pragma: no cover
     import_commands()
     cli()

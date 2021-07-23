@@ -1,6 +1,5 @@
 import json
 import os.path
-import pathlib
 
 import click
 import docker.errors
@@ -18,17 +17,14 @@ def start(ctx, no_tests):
         name = f'{ctx.obj["project_name"]}_{service}'
         try:
             container = client.containers.get(name)
-        except (docker.errors.NotFound, docker.errors.APIError):
-            container = None
-        if container:
-            continue
-        client.containers.run(
-            image=data['image'],
-            ports=data.get('ports', {}),
-            detach=True,
-            name=name,
-            environment=data.get('environment', {}),
-        )
+        except docker.errors.NotFound:
+            client.containers.run(
+                image=data['image'],
+                ports=data.get('ports', {}),
+                detach=True,
+                name=name,
+                environment=data.get('environment', {}),
+            )
 
     if no_tests is True:
         return
@@ -36,7 +32,7 @@ def start(ctx, no_tests):
     env = ctx.invoke(cli.get_command(ctx, 'env'), inside=True, no_export=True, quiet=True)
     try:
         image = client.images.get(ctx.obj['tag'])
-    except (docker.errors.NotFound, docker.errors.APIError):
+    except docker.errors.ImageNotFound:
         image = client.images.get(ctx.invoke(build))
 
     name = f'{ctx.obj["project_name"]}_tests'
@@ -45,10 +41,10 @@ def start(ctx, no_tests):
         if container.image.id != image.id:
             end_container(container)
             raise docker.errors.NotFound(message='Old Image')
-    except (docker.errors.NotFound, docker.errors.APIError):
+    except docker.errors.NotFound:
 
         command = ctx.obj['tests'].get('command', None)
-        if command is None:
+        if command is None:  # pragma: no branch
             command = "sh -c 'trap \"trap - TERM; kill -s TERM -- -$$\" TERM; tail -f /dev/null & wait'"
 
         container = client.containers.run(
@@ -84,19 +80,19 @@ def stop(ctx):
         name = f'{project_name}_{service}'
         try:
             container = client.containers.get(name)
-        except (docker.errors.NotFound, docker.errors.APIError):
+        except docker.errors.NotFound:
             return
         end_container(container)
     try:
         container = client.containers.get(f'{project_name}_tests')
-    except (docker.errors.NotFound, docker.errors.APIError):
+    except docker.errors.NotFound:
         return
     end_container(container)
 
 
 @cli.command()
 @click.pass_context
-def restart(ctx):
+def restart(ctx):  # pragma: no cover
     ctx.invoke(stop)
     ctx.invoke(start)
 
@@ -171,7 +167,7 @@ def build(ctx, rebuild, tag, dockerfile):
 
 @cli.command()
 @click.pass_context
-def exec(ctx):
+def exec(ctx):  # pragma: no cover
     container = ctx.invoke(start)
     os.execvp('docker', ['docker', 'exec', '-ti', container.id, 'bash'])
 
@@ -187,7 +183,7 @@ def run(ctx, step, posargs):
     if step:
         commands = [steps.get(step, '{posargs}')]
     else:
-        commands = list(steps.values())
+        commands = steps.values()
     for command in commands:
         command = command.format(
             posargs=' '.join(posargs),
