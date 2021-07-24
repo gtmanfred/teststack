@@ -81,7 +81,7 @@ def stop(ctx):
         try:
             container = client.containers.get(name)
         except docker.errors.NotFound:
-            return
+            continue
         end_container(container)
     try:
         container = client.containers.get(f'{project_name}_tests')
@@ -155,6 +155,7 @@ def build(ctx, rebuild, tag, dockerfile):
     click.echo(f'Build Image: {tag}')
 
     for chunk in client.api.build(path='.', dockerfile=dockerfile, tag=tag, nocache=rebuild, rm=True):
+        print(chunk)
         for line in chunk.split(b'\r\n'):
             if not line:
                 continue

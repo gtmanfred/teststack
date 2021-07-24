@@ -33,3 +33,14 @@ def attrs():
             },
         },
     }
+
+
+@pytest.fixture()
+def build_output():
+    chunks = []
+    with open('tests/files/build.output', 'rb') as fh_:
+        for line in fh_:
+            line = line.replace(b'\\r\\n', b'\r\n')
+            line = line.replace(b'\\\\', b'\\')
+            chunks.append(line)
+    return chunks

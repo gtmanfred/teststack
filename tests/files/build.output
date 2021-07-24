@@ -1,0 +1,8 @@
+{"stream":"Step 1/4 : FROM python:slim"}\r\n{"stream":"\\n"}
+{"stream":" ---\\u003e 8ff9a93f5382\\n"}\r\n{"stream":"Step 2/4 : ENV PYTHON=True"}\r\n{"stream":"\\n"}
+{"stream":" ---\\u003e Using cache\\n"}\r\n{"stream":" ---\\u003e 8523e80692c4\\n"}\r\n{"stream":"Step 3/4 : RUN echo \\"app-git-hash: 147bcec37cbb471df0397f73879152f4fd71bbe2 \\u003e\\u003e /etc/docker-metadata\\""}\r\n{"stream":"\\n"}
+{"stream":"Removing intermediate container db191de3aeaa\\n"}\r\n{"stream":" ---\\u003e fabadcec5ac2\\n"}\r\n{"stream":"Step 4/4 : ENV APP_GIT_HASH=147bcec37cbb471df0397f73879152f4fd71bbe2"}\r\n{"stream":"\\n"}
+{"stream":" ---\\u003e Running in b97998a3a6fa\\n"}
+{"stream":"Removing intermediate container b97998a3a6fa\\n"}\r\n{"stream":" ---\\u003e 261cbeee9bdd\\n"}\r\n{"aux":{"ID":"sha256:261cbeee9bdd2c2a3063d1c907854469b3e174ddd61360dca3d4dc002684518c"}}
+{"stream":"Successfully built 261cbeee9bdd\\n"}
+{"stream":"Successfully tagged teststack:147bcec37cbb471df0397f73879152f4fd71bbe2\\n"}
