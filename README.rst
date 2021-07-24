@@ -1,6 +1,21 @@
 Teststack
 =========
 
+.. image:: https://github.com/gtmanfred/teststack/workflows/Tests/badge.svg
+    :target: https://github.com/gtmanfred/teststack
+
+.. image:: https://img.shields.io/codecov/c/github/gtmanfred/teststack
+    :target: https://codecov.io/gh/gtmanfred/teststack
+
+.. image:: https://img.shields.io/pypi/v/teststack
+    :target: https://pypi.org/project/teststack
+
+.. image:: https://img.shields.io/pypi/l/teststack
+    :target: http://www.apache.org/licenses/LICENSE-2.0
+
+.. image:: https://img.shields.io/pypi/dm/teststack
+    :target: https://pypi.org/project/figenv/
+
 Test an application with infrastructure.
 
 teststack.toml
