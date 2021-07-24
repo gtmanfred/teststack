@@ -94,8 +94,9 @@ def test_container_start_with_tests_not_started(runner, attrs):
 def test_container_stop(runner, attrs):
     client = mock.MagicMock()
     client.containers.get.return_value.attrs = attrs
-    with mock.patch('docker.from_env', return_value=client), \
-            mock.patch('teststack.commands.containers.end_container') as end_container:
+    with mock.patch('docker.from_env', return_value=client), mock.patch(
+        'teststack.commands.containers.end_container'
+    ) as end_container:
         result = runner.invoke(cli, ['stop'])
     assert client.containers.get.call_count == 3
     assert end_container.call_count == 3
@@ -106,8 +107,9 @@ def test_container_stop_without_containers(runner, attrs):
     client = mock.MagicMock()
     client.containers.get.return_value.attrs = attrs
     client.containers.get.side_effect = NotFound('container not found')
-    with mock.patch('docker.from_env', return_value=client), \
-            mock.patch('teststack.commands.containers.end_container') as end_container:
+    with mock.patch('docker.from_env', return_value=client), mock.patch(
+        'teststack.commands.containers.end_container'
+    ) as end_container:
         result = runner.invoke(cli, ['stop'])
     assert client.containers.get.call_count == 3
     assert end_container.called is False
@@ -119,13 +121,7 @@ def test_container_build(runner, build_output):
     client.api.build.return_value = build_output
     with mock.patch('docker.from_env', return_value=client):
         result = runner.invoke(cli, ['build', '--tag=blah'])
-    client.api.build.assert_called_with(
-        path='.',
-        dockerfile='Dockerfile',
-        tag='blah',
-        nocache=False,
-        rm=True
-    )
+    client.api.build.assert_called_with(path='.', dockerfile='Dockerfile', tag='blah', nocache=False, rm=True)
     assert result.exit_code == 0
 
 
@@ -147,7 +143,9 @@ def test_container_run(runner, attrs):
     client.containers.get.return_value.attrs = attrs
     client.images.get.return_value.id = client.containers.get.return_value.image.id
     client.containers.get.return_value.exec_run.return_value.output = [
-        'foo', 'bar', 'baz',
+        'foo',
+        'bar',
+        'baz',
     ]
     with mock.patch('docker.from_env', return_value=client):
         result = runner.invoke(cli, ['run'])
@@ -164,7 +162,9 @@ def test_container_run_step(runner, attrs):
     client.containers.get.return_value.attrs = attrs
     client.images.get.return_value.id = client.containers.get.return_value.image.id
     client.containers.get.return_value.exec_run.return_value.output = [
-        'foo', 'bar', 'baz',
+        'foo',
+        'bar',
+        'baz',
     ]
     with mock.patch('docker.from_env', return_value=client):
         result = runner.invoke(cli, ['run', '--step=ping'])
