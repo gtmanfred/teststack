@@ -15,6 +15,28 @@ redis = "^3.5.3"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.4"
+coverage = {extras = ["toml"], version = "^5.5"}
+
+[tool.coverage.run]
+branch = true
+omit = ["tests/"]
+source = ["app"]
+
+[tool.coverage.paths]
+source = ["."]
+
+[tool.coverage.report]
+skip_covered = false
+
+[tool.coverage.xml]
+output = "coverage.xml"
+
+[tool.pytest.ini_options]
+addopts = "-ra"
+log_cli_level = "critical"
+junit_family = "xunit2"
+testpaths = "tests/"
+norecursedirs = ".git .tox"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

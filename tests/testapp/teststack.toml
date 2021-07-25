@@ -1,6 +1,8 @@
 [tests.steps]
-ping = "ping -c4 8.8.8.8"
-env = "env"
+install = "poetry install"
+test = "poetry run coverage run -m pytest -v"
+report = "poetry run coverage report"
+xml = "poetry run coverage xml"
 
 [tests.environment]
 AWS_ACCESS_KEY_ID = "keyid"

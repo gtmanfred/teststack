@@ -12,4 +12,4 @@ _version.py
 # coverage files
 /htmlcov
 coverage.xml
-/.coverage*
+.coverage*

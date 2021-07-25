@@ -37,7 +37,7 @@ except ImportError:  # pragma: no cover
 )
 @click.option(
     '--path', '-p',
-    default=os.path.basename(os.getcwd()),
+    default=os.getcwd(),
     type=click.Path(exists=True),
     help='Directory to run teststack in.'
 )
