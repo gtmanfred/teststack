@@ -67,7 +67,9 @@ def docker():
 @pytest.fixture(autouse=True)
 def test_no_leftover_docker_containers(docker):
     yield
-    assert not any(container.name.startswith('testapp') for container in docker.containers.list()), \
-        '`testapp` containers were left behind, please clean them up in this test'
-    assert not any(container.name.startswith('teststack') for container in docker.containers.list()), \
-        '`teststack` containers were left behind, please clean them up in this test'
+    assert not any(
+        container.name.startswith('testapp') for container in docker.containers.list()
+    ), '`testapp` containers were left behind, please clean them up in this test'
+    assert not any(
+        container.name.startswith('teststack') for container in docker.containers.list()
+    ), '`teststack` containers were left behind, please clean them up in this test'

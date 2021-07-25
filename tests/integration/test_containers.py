@@ -16,7 +16,6 @@ def test_running_tests_in_containers(docker, runner, testapp_dir):
     assert result.exit_code == 0
 
 
-
 def test_running_tests(docker, runner, testapp_dir):
 
     result = runner.invoke(cli, [f'--path={testapp_dir}', 'stop', 'render', 'build', 'start', '-n'])
