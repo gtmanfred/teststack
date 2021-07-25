@@ -23,13 +23,14 @@ def health_cache_status():
     return True
 
 
-
 class Health(MethodView):
     def get(self):
         database = health_database_status()
         cache = health_cache_status()
-        return jsonify({
-            'status': database and cache,
-            'database': database,
-            'cache': cache,
-        })
+        return jsonify(
+            {
+                'status': database and cache,
+                'database': database,
+                'cache': cache,
+            }
+        )

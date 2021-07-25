@@ -1,3 +1,5 @@
+import pathlib
+
 import click.testing
 
 import pytest
@@ -44,3 +46,13 @@ def build_output():
             line = line.replace(b'\\\\', b'\\')
             chunks.append(line)
     return chunks
+
+
+@pytest.fixture()
+def main_dir():
+    return pathlib.Path(__file__).parent.parent
+
+
+@pytest.fixture()
+def testapp_dir(main_dir):
+    return main_dir / 'tests' / 'testapp'

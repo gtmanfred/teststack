@@ -1,5 +1,4 @@
 [tests.steps]
-ping = "ping -c4 8.8.8.8"
 env = "env"
 
 [tests.environment]

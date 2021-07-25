@@ -15,23 +15,25 @@ def test_render(runner, tag):
         with open(tmpfile.name, 'r') as fh_:
             assert fh_.readline() == 'FROM python:slim\n'
             assert fh_.readline() == 'ENV PYTHON=True\n'
+            assert fh_.readline() == 'WORKDIR /srv\n'
             assert fh_.readline() == '\n'
             assert 'docker-metadata' in fh_.readline()
             assert tag['commit'] in fh_.readline()
 
 
-def test_render_isolated(runner, tag):
-    with open('Dockerfile.j2') as fh_, runner.isolated_filesystem():
+def test_render_isolated(runner):
+    with open('Dockerfile.j2') as fh_, runner.isolated_filesystem() as th_:
 
         pathlib.Path('teststack.toml').touch()
         with open('Dockerfile.j2', 'w') as wh_:
             wh_.write(fh_.read())
 
-        result = runner.invoke(cli, ['render'])
+        result = runner.invoke(cli, [f'--path={th_}', 'render'])
         assert result.exit_code == 0
         with open('Dockerfile', 'r') as fh_:
             assert fh_.readline() == 'FROM python:slim\n'
             assert fh_.readline() == 'ENV PYTHON=True\n'
+            assert fh_.readline() == 'WORKDIR /srv\n'
             assert not fh_.readline()
 
 
@@ -153,7 +155,6 @@ def test_container_run(runner, attrs):
     assert client.containers.run.called is False
     assert result.exit_code == 0
     assert 'foobarbaz' in result.output
-    assert 'Run Command: ping' in result.output
     assert 'Run Command: env' in result.output
 
 
@@ -172,5 +173,4 @@ def test_container_run_step(runner, attrs):
     assert client.containers.run.called is False
     assert result.exit_code == 0
     assert 'foobarbaz' in result.output
-    assert 'Run Command: ping' in result.output
     assert 'Run Command: env' not in result.output
