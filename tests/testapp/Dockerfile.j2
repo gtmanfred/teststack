@@ -1,0 +1,8 @@
+FROM python:{{'slim'}}
+ENV PYTHON=True
+WORKDIR /srv/app/
+
+RUN python -m pip install poetry
+
+COPY ./ .
+RUN poetry install --no-dev

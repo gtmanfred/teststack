@@ -155,7 +155,6 @@ def build(ctx, rebuild, tag, dockerfile):
     click.echo(f'Build Image: {tag}')
 
     for chunk in client.api.build(path='.', dockerfile=dockerfile, tag=tag, nocache=rebuild, rm=True):
-        print(chunk)
         for line in chunk.split(b'\r\n'):
             if not line:
                 continue

@@ -1,7 +1,7 @@
 __pycache__/
 *.swp
 /.tox/
-/Dockerfile
+Dockerfile
 _version.py
 /build
 /dist

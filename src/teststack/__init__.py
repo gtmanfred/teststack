@@ -31,18 +31,32 @@ except ImportError:  # pragma: no cover
 )
 @click.option(
     '--project-name',
-    '-p',
+    '-n',
     default=os.path.basename(os.getcwd()),
     help='Prefix for docker objects.',
 )
+@click.option(
+    '--path', '-p',
+    default=os.path.basename(os.getcwd()),
+    type=click.Path(exists=True),
+    help='Directory to run teststack in.'
+)
 @click.pass_context
-def cli(ctx, config, project_name):
+def cli(ctx, config, project_name, path):
     ctx.ensure_object(dict)
     config = toml.load(config)
     ctx.obj['services'] = config.get('services', {})
     ctx.obj['tests'] = config.get('tests', {})
     ctx.obj['project_name'] = project_name
+    ctx.obj['currentdir'] = os.getcwd()
     ctx.obj.update(git.get_tag())
+    os.chdir(path)
+
+
+@cli.resultcallback
+@click.pass_context
+def return_to_original_directory(ctx):
+    os.chdir(ctx.obj['currentdir'])
 
 
 def import_commands():

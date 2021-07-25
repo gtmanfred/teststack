@@ -1,0 +1,21 @@
+[tool.poetry]
+name = "app"
+version = "0.1.0"
+description = "test app for teststack"
+authors = ["Daniel Wallace <daniel@gtmanfred.com>"]
+license = "APACHE-2.0"
+
+[tool.poetry.dependencies]
+python = "^3.6"
+Flask-SQLAlchemy = "^2.5.1"
+figenv = "^1.0.1"
+SQLAlchemy = {extras = ["postgresql_psycopg2binary"], version = "^1.4.22"}
+Flask-Caching = "^1.10.1"
+redis = "^3.5.3"
+
+[tool.poetry.dev-dependencies]
+pytest = "^6.2.4"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
