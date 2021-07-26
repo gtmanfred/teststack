@@ -17,7 +17,7 @@ def get_tag():
         return {
             'tag': tag,
             'commit': repo.head.commit.hexsha,
-            'branch': None if repo.head.is_detached() else repo.active_branch.name,
+            'branch': None if repo.head.is_detached else repo.active_branch.name,
         }
     except git.exc.InvalidGitRepositoryError:
         return {
