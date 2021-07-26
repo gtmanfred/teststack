@@ -192,7 +192,7 @@ def run(ctx, step, posargs):
         command = command.format(
             posargs=' '.join(posargs),
         )
-        click.echo(f'Run Command: {command}')
+        click.echo(click.style(f'Run Command: {command}', fg='green'))
         socket = container.exec_run(
             cmd=command,
             tty=True,
