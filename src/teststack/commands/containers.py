@@ -137,7 +137,11 @@ def render(ctx, template_file, dockerfile):
             ]
         ),
     )
-    template.stream(**os.environ).dump(dockerfile)
+    template.stream(
+        GIT_BRANCH=ctx.obj.get('branch', 'dev'),
+        GIT_COMMIT_HASH=ctx.obj.get('commit', None),
+        **os.environ,
+    ).dump(dockerfile)
 
 
 @cli.command()

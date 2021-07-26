@@ -14,7 +14,11 @@ def get_tag():
                 repo.head.commit.hexsha,
             ]
         )
-        return {'tag': tag, 'commit': repo.head.commit.hexsha}
+        return {
+            'tag': tag,
+            'commit': repo.head.commit.hexsha,
+            'branch': repo.active_branch.name,
+        }
     except git.exc.InvalidGitRepositoryError:
         return {
             'tag': ':'.join(
