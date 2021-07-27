@@ -1,5 +1,9 @@
 [tests.steps]
 env = "env"
+install = [
+    "python -m pip install setuptools",
+    "python -m pip install .",
+]
 
 [tests.environment]
 AWS_ACCESS_KEY_ID = "keyid"

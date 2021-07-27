@@ -1,8 +1,11 @@
 [tests.steps]
 install = "poetry install"
 test = "poetry run coverage run -m pytest -v {posargs}"
-report = "poetry run coverage report"
-xml = "poetry run coverage xml"
+report = [
+    "poetry run coverage report",
+    "poetry run coverage xml",
+    "poetry run coverage html"
+]
 
 [tests.environment]
 AWS_ACCESS_KEY_ID = "keyid"

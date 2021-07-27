@@ -1,4 +1,5 @@
 import os.path
+import sys
 from distutils.version import LooseVersion
 
 import click
@@ -20,7 +21,7 @@ except ImportError:  # pragma: no cover
 
         __version__ = get_version(root='..', relative_to=__file__)
     except ImportError:
-        __version__ = None
+        __version__ = 'v0.0.1'
 
 
 @click.group(chain=True)
@@ -51,7 +52,8 @@ def cli(ctx, config, project_name, path):
 
     min_version = LooseVersion(config.get('tests', {}).get('min_version', 'v0.0.0').lstrip('v'))
     if min_version > LooseVersion(__version__):
-        raise IncompatibleVersionError(f'Current teststack version is too low, upgrade to atleast {min_version}')
+        click.echo(f'Current teststack version is too low, upgrade to atleast {min_version}', err=True)
+        sys.exit(10)
 
     ctx.obj['services'] = config.get('services', {})
     ctx.obj['tests'] = config.get('tests', {})

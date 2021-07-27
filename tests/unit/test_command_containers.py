@@ -168,9 +168,10 @@ def test_container_run_step(runner, attrs):
         'baz',
     ]
     with mock.patch('docker.from_env', return_value=client):
-        result = runner.invoke(cli, ['run', '--step=ping'])
+        result = runner.invoke(cli, ['run', '--step=install'])
     assert client.containers.get.call_count == 5
     assert client.containers.run.called is False
     assert result.exit_code == 0
     assert 'foobarbaz' in result.output
     assert 'Run Command: env' not in result.output
+    assert 'Run Command: python -m pip install' in result.output
