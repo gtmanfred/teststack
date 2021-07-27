@@ -1,9 +1,11 @@
 import os.path
+from distutils.version import LooseVersion
 
 import click
 import toml
 
 from . import git
+from .errors import IncompatibleVersionError
 
 try:
     from importlib.metadata import entry_points
@@ -46,6 +48,10 @@ def cli(ctx, config, project_name, path):
 
     with open(config, 'r') as fh_:
         config = toml.load(fh_)
+
+    min_version = LooseVersion(config.get('tests', {}).get('min_version', 'v0.0.0').lstrip('v'))
+    if min_version > LooseVersion(__version__):
+        raise IncompatibleVersionError(f'Current teststack version is too low, upgrade to atleast {min_version}')
 
     ctx.obj['services'] = config.get('services', {})
     ctx.obj['tests'] = config.get('tests', {})
