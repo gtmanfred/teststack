@@ -183,12 +183,7 @@ def exec(ctx):  # pragma: no cover
 def run(ctx, step, posargs):
     container = ctx.invoke(start)
 
-    steps = ctx.obj['tests'].get('steps', {})
-    if step:
-        commands = [steps.get(step, '{posargs}')]
-    else:
-        commands = steps.values()
-    for command in commands:
+    def run_command(command):
         command = command.format(
             posargs=' '.join(posargs),
         )
@@ -201,3 +196,15 @@ def run(ctx, step, posargs):
 
         for line in socket.output:
             click.echo(line, nl=False)
+
+    steps = ctx.obj['tests'].get('steps', {})
+    if step:
+        commands = [steps.get(step, '{posargs}')]
+    else:
+        commands = steps.values()
+    for command in commands:
+        if isinstance(command, list):
+            for cmd in command:
+                run_command(cmd)
+        else:
+            run_command(command)
