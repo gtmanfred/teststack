@@ -1,4 +1,5 @@
 import os.path
+import pathlib
 import sys
 from distutils.version import LooseVersion
 
@@ -28,7 +29,7 @@ except ImportError:  # pragma: no cover
 @click.option(
     '--config',
     '-c',
-    type=click.Path(exists=True),
+    type=click.Path(),
     default='teststack.toml',
     help='Location of teststack config.',
 )
@@ -42,13 +43,17 @@ except ImportError:  # pragma: no cover
 @click.pass_context
 def cli(ctx, config, project_name, path):
     ctx.ensure_object(dict)
+    config = pathlib.Path(config)
 
     # change dir before everything else is calculated
     ctx.obj['currentdir'] = os.getcwd()
     os.chdir(path)
 
-    with open(config, 'r') as fh_:
-        config = toml.load(fh_)
+    if config.exists():
+        with config.open('r') as fh_:
+            config = toml.load(fh_)
+    else:
+        config = {}
 
     min_version = LooseVersion(config.get('tests', {}).get('min_version', 'v0.0.0').lstrip('v'))
     if min_version > LooseVersion(__version__):

@@ -24,7 +24,6 @@ def test_render(runner, tag):
 def test_render_isolated(runner):
     with open('Dockerfile.j2') as fh_, runner.isolated_filesystem() as th_:
 
-        pathlib.Path('teststack.toml').touch()
         with open('Dockerfile.j2', 'w') as wh_:
             wh_.write(fh_.read())
 
