@@ -23,6 +23,7 @@ def start(ctx, no_tests):
                 ports=data.get('ports', {}),
                 detach=True,
                 name=name,
+                command=service.get('command', None),
                 environment=data.get('environment', {}),
             )
 

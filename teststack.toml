@@ -31,6 +31,7 @@ POSTGRES_MAIN_DBNAME = "{POSTGRES_DB}"
 
 [services.rabbit]
 image = "rabbitmq:3.8"
+# command = blah
 
 [services.rabbit.ports]
 "5672/tcp" = ""
