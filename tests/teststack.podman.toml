@@ -1,0 +1,47 @@
+[client]
+name = "podman"
+base_url = "http+ssh://core@localhost:53927/run/user/1000/podman/podman.sock"
+identity = "/Users/wallacda/.ssh/podman-machine-default"
+
+[tests.steps]
+env = "env"
+install = [
+    "python -m pip install setuptools",
+    "python -m pip install .",
+]
+
+[tests.environment]
+AWS_ACCESS_KEY_ID = "keyid"
+AWS_SECRET_ACCESS_KEY = "secret"
+
+[services.database]
+image = "docker.io/postgres:12"
+
+[services.database.ports]
+"5432/tcp" = ""
+
+[services.database.environment]
+POSTGRES_USER = "bebop"
+POSTGRES_PASSWORD = "secret"
+POSTGRES_DB = "bebop"
+
+[services.database.export]
+SQLALCHEMY_DATABASE_URI = "postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{HOST}:{PORT;5432/tcp}/{POSTGRES_DB}"
+POSTGRES_MAIN_USER = "{POSTGRES_USER}"
+POSTGRES_MAIN_PASSWORD = "{POSTGRES_PASSWORD}"
+POSTGRES_MAIN_HOST = "{HOST}"
+POSTGRES_MAIN_RDS_HOST = "{HOST}"
+POSTGRES_MAIN_PORT = "{PORT;5432/tcp}"
+POSTGRES_MAIN_DBNAME = "{POSTGRES_DB}"
+
+[services.rabbit]
+image = "docker.io/rabbitmq:3.8"
+
+[services.rabbit.ports]
+"5672/tcp" = ""
+"15672/tcp" = ""
+
+[services.rabbit.environment]
+
+[services.rabbit.export]
+BROKER_URL = "amqp://guest:guest@{HOST}:{PORT;5672/tcp}//"

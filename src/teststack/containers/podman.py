@@ -2,26 +2,33 @@ import json
 import os
 
 import click
-import docker.errors
+import podman.errors
 
 
 class Client:
     def __init__(self, **kwargs):
-        self.client = docker.from_env()
+        self.client = podman.PodmanClient(**kwargs)
+
+    def __del__(self):
+        self.client.close()
 
     def end_container(self, name):
         try:
             container = self.client.containers.get(name)
-        except docker.errors.NotFound:
+        except podman.errors.NotFound:
             return
-        container.stop()
-        container.wait()
-        container.remove(v=True)
+        try:
+            container.stop()
+            container.wait()
+        except podman.errors.APIError:
+            pass
+        finally:
+            container.remove(v=True)
 
     def container_get(self, name):
         try:
             return self.client.containers.get(name).id
-        except docker.errors.NotFound:
+        except podman.errors.NotFound:
             return None
 
     def container_get_current_image(self, name):
@@ -42,8 +49,8 @@ class Client:
         volumes=None,
         mount_cwd=False,
     ):
+        volumes = volumes or {}
         if mount_cwd is True:
-            volumes = volumes or {}
             volumes.update(
                 {
                     os.getcwd(): {
@@ -52,22 +59,31 @@ class Client:
                     },
                 }
             )
+
+        if ports:
+            for port, hostport in ports.items():
+                if not hostport:
+                    ports[port] = None
+
+        if not self.image_get(image):
+            self.client.images.pull(image)
+
         return self.client.containers.run(
             name=name,
             image=image,
             detach=True,
             stream=stream,
-            user=user,
+            user='root',
             ports=ports or {},
-            command=command,
             environment=environment or {},
+            command=command,
             volumes=volumes,
         ).id
 
     def image_get(self, tag):
         try:
             return self.client.images.get(tag).id
-        except docker.errors.ImageNotFound:
+        except podman.errors.ImageNotFound:
             return None
 
     def run_command(self, container, command):
@@ -83,19 +99,13 @@ class Client:
             click.echo(line, nl=False)
 
     def build(self, dockerfile, tag, rebuild):
-        for chunk in self.client.api.build(path='.', dockerfile=dockerfile, tag=tag, nocache=rebuild, rm=True):
-            for line in chunk.split(b'\r\n'):
-                if not line:
-                    continue
-                data = json.loads(line)
-                if 'stream' in data:
-                    click.echo(data['stream'], nl=False)
+        return self.client.images.build(path='.', dockerfile=dockerfile, tag=tag, nocache=rebuild, rm=True)
 
     def get_container_data(self, name, inside=False):
         data = {}
         try:
             container = self.client.containers.get(name)
-        except docker.errors.NotFound:
+        except podman.errors.NotFound:
             return None
         data['HOST'] = container.attrs['NetworkSettings']['IPAddress'] if inside else 'localhost'
         for port, port_data in container.attrs['NetworkSettings']['Ports'].items():
@@ -106,4 +116,4 @@ class Client:
         return data
 
     def exec(self, container):
-        os.execvp('docker', ['docker', 'exec', '-ti', container, 'bash'])
+        os.execvp('podman', ['podman', 'exec', '-ti', container, 'bash'])

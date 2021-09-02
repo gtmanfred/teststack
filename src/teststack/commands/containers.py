@@ -29,6 +29,7 @@ def start(ctx, no_tests):
         return
 
     env = ctx.invoke(cli.get_command(ctx, 'env'), inside=True, no_export=True, quiet=True)
+    env = dict(line.split('=') for line in env)
     image = client.image_get(ctx.obj['tag'])
     if image is None:
         image = client.image_get(ctx.invoke(build))
@@ -153,7 +154,7 @@ def build(ctx, rebuild, tag, dockerfile):
 @click.pass_context
 def exec(ctx):  # pragma: no cover
     container = ctx.invoke(start)
-    os.execvp('docker', ['docker', 'exec', '-ti', container, 'bash'])
+    ctx.obj['client'].exec(container)
 
 
 @cli.command()
