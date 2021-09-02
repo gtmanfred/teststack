@@ -62,7 +62,7 @@ def cli(ctx, config, project_name, path):
 
     ctx.obj['services'] = config.get('services', {})
     ctx.obj['tests'] = config.get('tests', {})
-    ctx.obj['project_name'] = os.path.basename(path) if project_name is None else project_name
+    ctx.obj['project_name'] = os.path.basename(path.strip('/')) if project_name is None else project_name
 
     ctx.obj['client'] = get_client(config.get('client', {}))
     ctx.obj.update(git.get_tag())

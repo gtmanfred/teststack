@@ -63,7 +63,7 @@ def test_container_start_with_tests(runner, attrs):
     client.images.get.return_value.id = client.containers.get.return_value.image.id
     with mock.patch('docker.from_env', return_value=client):
         result = runner.invoke(cli, ['start'])
-    assert client.containers.get.call_count == 5
+    assert client.containers.get.call_count == 6
     assert client.containers.run.called is False
     assert result.exit_code == 0
 
@@ -73,7 +73,7 @@ def test_container_start_with_tests_old_image(runner, attrs):
     client.containers.get.return_value.attrs = attrs
     with mock.patch('docker.from_env', return_value=client):
         result = runner.invoke(cli, ['start'])
-    assert client.containers.get.call_count == 5
+    assert client.containers.get.call_count == 7
     assert client.containers.run.called is True
     assert client.containers.get.return_value.stop.called is True
     assert client.containers.get.return_value.wait.called is True
@@ -87,7 +87,7 @@ def test_container_start_with_tests_not_started(runner, attrs):
     client.containers.get.side_effect = NotFound('container not found')
     with mock.patch('docker.from_env', return_value=client):
         result = runner.invoke(cli, ['start'])
-    assert client.containers.get.call_count == 5
+    assert client.containers.get.call_count == 6
     assert client.containers.run.call_count == 3
     assert result.exit_code == 0
 
@@ -96,7 +96,7 @@ def test_container_stop(runner, attrs):
     client = mock.MagicMock()
     client.containers.get.return_value.attrs = attrs
     with mock.patch('docker.from_env', return_value=client), mock.patch(
-        'teststack.commands.containers.end_container'
+        'teststack.containers.docker.Client.end_container'
     ) as end_container:
         result = runner.invoke(cli, ['stop'])
     assert client.containers.get.call_count == 3
@@ -109,7 +109,7 @@ def test_container_stop_without_containers(runner, attrs):
     client.containers.get.return_value.attrs = attrs
     client.containers.get.side_effect = NotFound('container not found')
     with mock.patch('docker.from_env', return_value=client), mock.patch(
-        'teststack.commands.containers.end_container'
+        'teststack.containers.docker.Client.end_container'
     ) as end_container:
         result = runner.invoke(cli, ['stop'])
     assert client.containers.get.call_count == 3
@@ -130,12 +130,13 @@ def test_container_start_with_tests_without_image(runner, attrs):
     client = mock.MagicMock()
     client.containers.get.return_value.attrs = attrs
     image = mock.MagicMock()
-    client.images.get.side_effect = [ImageNotFound('image not found'), image]
+    client.images.get.side_effect = [ImageNotFound('image not found'), image, image]
     with mock.patch('docker.from_env', return_value=client):
         result = runner.invoke(cli, ['start'])
-    assert client.containers.get.call_count == 5
+    print(result.output)
+    assert client.containers.get.call_count == 7
     assert client.containers.run.called is True
-    assert client.images.get.call_count == 2
+    assert client.images.get.call_count == 3
     assert result.exit_code == 0
 
 
@@ -150,7 +151,7 @@ def test_container_run(runner, attrs):
     ]
     with mock.patch('docker.from_env', return_value=client):
         result = runner.invoke(cli, ['run'])
-    assert client.containers.get.call_count == 5
+    assert client.containers.get.call_count == 9
     assert client.containers.run.called is False
     assert result.exit_code == 0
     assert 'foobarbaz' in result.output
@@ -168,7 +169,7 @@ def test_container_run_step(runner, attrs):
     ]
     with mock.patch('docker.from_env', return_value=client):
         result = runner.invoke(cli, ['run', '--step=install'])
-    assert client.containers.get.call_count == 5
+    assert client.containers.get.call_count == 8
     assert client.containers.run.called is False
     assert result.exit_code == 0
     assert 'foobarbaz' in result.output

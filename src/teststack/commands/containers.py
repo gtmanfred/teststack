@@ -50,6 +50,7 @@ def start(ctx, no_tests):
             user=0,
             environment=env,
             command=command,
+            mount_cwd=True,
         )
 
     return container
@@ -104,6 +105,15 @@ def render(ctx, template_file, dockerfile):
     )
 
     template_string = template_file.read()
+
+    if 'commit' in ctx.obj:
+        template_string = '\n'.join(
+            [
+                template_string,
+                f'RUN echo "app-git-hash: {ctx.obj["commit"]} >> /etc/docker-metadata"',
+                f'ENV APP_GIT_HASH={ctx.obj["commit"]}\n',
+            ]
+        )
 
     template = env.from_string(
         '\n'.join(
@@ -162,8 +172,6 @@ def run(ctx, step, posargs):
     for command in commands:
         if isinstance(command, list):
             for cmd in command:
-                click.echo(click.style(f'Run Command: {command}', fg='green'))
                 client.run_command(container, cmd.format(posargs=' '.join(posargs)))
         else:
-            click.echo(click.style(f'Run Command: {command}', fg='green'))
             client.run_command(container, command.format(posargs=' '.join(posargs)))

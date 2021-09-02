@@ -62,7 +62,7 @@ class Client:
             command=command,
             environment=environment or {},
             volumes=volumes,
-        )
+        ).id
 
     def image_get(self, tag):
         try:
@@ -72,6 +72,7 @@ class Client:
 
     def run_command(self, container, command):
         container = self.client.containers.get(container)
+        click.echo(click.style(f'Run Command: {command}', fg='green'))
         socket = container.exec_run(
             cmd=command,
             tty=True,
