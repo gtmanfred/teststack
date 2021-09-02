@@ -63,7 +63,24 @@ def cli(ctx, config, project_name, path):
     ctx.obj['services'] = config.get('services', {})
     ctx.obj['tests'] = config.get('tests', {})
     ctx.obj['project_name'] = os.path.basename(path) if project_name is None else project_name
+
+    ctx.obj['client'] = get_client(config.get('client', {}))
     ctx.obj.update(git.get_tag())
+
+
+def get_client(client):
+    group = 'teststack.clients'
+    entries = entry_points()
+
+    if hasattr(entries, 'select'):
+        entries = entries.select(group=group)
+    else:
+        entries = entries.get(group, [])
+
+    client_name = client.pop('name', 'docker')
+    for entry_point in entries:
+        if entry_point.name == client_name:
+            return entry_point.load().Client(**client)
 
 
 def import_commands():
