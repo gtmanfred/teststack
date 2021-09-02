@@ -1,13 +1,47 @@
 import json
 import os
+import platform
+import subprocess
 
 import click
 import podman.errors
 
 
 class Client:
-    def __init__(self, **kwargs):
-        self.client = podman.PodmanClient(**kwargs)
+    def __init__(self, machine_name=None, **kwargs):
+        if machine_name is not None:
+            kws = self._get_connection(machine_name)
+            kws.update(kwargs)
+        elif platform.system() == 'Darwin':
+            kws = self._get_connection('*')
+            kws.update(kwargs)
+        else:
+            kws = kwargs
+
+        if kws:
+            self.client = podman.PodmanClient(**kws)
+        else:
+            self.client = podman.from_env()
+
+    def _get_connection(self, name):
+        connections = json.loads(
+            subprocess.check_output(
+                [
+                    'podman',
+                    'system',
+                    'connection',
+                    'list',
+                    '--format=json',
+                ]
+            ),
+        )
+        for connection in connections:
+            if connection['Name'].endswith(name):
+                return {
+                    'base_url': f'http+{connection["URI"]}',
+                    'identity': connection['Identity'],
+                }
+        return {}
 
     def __del__(self):
         self.client.close()
