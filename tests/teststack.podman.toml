@@ -1,6 +1,3 @@
-[client]
-name = "podman"
-
 [tests.steps]
 env = "env"
 install = [
