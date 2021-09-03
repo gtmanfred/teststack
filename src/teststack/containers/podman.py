@@ -83,14 +83,13 @@ class Client:
         volumes=None,
         mount_cwd=False,
     ):
-        volumes = volumes or {}
+        mounts = volumes or []
         if mount_cwd is True:
-            volumes.update(
+            mounts.append(
                 {
-                    os.getcwd(): {
-                        'bind': self.client.images.get(image).attrs['Config']['WorkingDir'],
-                        'mode': 'rw',
-                    },
+                    'Source': os.getcwd(),
+                    'Destination': self.client.images.get(image).attrs['Config']['WorkingDir'],
+                    'Mode': 'rw',
                 }
             )
 
@@ -111,7 +110,7 @@ class Client:
             ports=ports or {},
             environment=environment or {},
             command=command,
-            volumes=volumes,
+            mounts=mounts,
         ).id
 
     def image_get(self, tag):

@@ -1,3 +1,6 @@
+[client]
+name = "podman"
+
 [tests.steps]
 install = "poetry install"
 test = "poetry run coverage run -m pytest -v {posargs}"

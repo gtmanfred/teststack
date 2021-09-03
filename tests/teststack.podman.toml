@@ -1,7 +1,5 @@
 [client]
 name = "podman"
-base_url = "http+ssh://core@localhost:53927/run/user/1000/podman/podman.sock"
-identity = "/Users/wallacda/.ssh/podman-machine-default"
 
 [tests.steps]
 env = "env"
