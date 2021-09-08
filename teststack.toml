@@ -1,3 +1,6 @@
+[client]
+name = "docker"
+
 [tests.steps]
 env = "env"
 install = [

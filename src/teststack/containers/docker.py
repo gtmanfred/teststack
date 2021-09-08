@@ -52,6 +52,9 @@ class Client:
                     },
                 }
             )
+        if command is True:  # pragma: no branch
+            command = "sh -c 'trap \"trap - TERM; kill -s TERM -- -$$\" TERM; tail -f /dev/null & wait'"
+
         return self.client.containers.run(
             name=name,
             image=image,

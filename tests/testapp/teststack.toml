@@ -12,7 +12,7 @@ AWS_ACCESS_KEY_ID = "keyid"
 AWS_SECRET_ACCESS_KEY = "secret"
 
 [services.database]
-image = "postgres:12"
+image = "docker.io/postgres:12"
 
 [services.database.ports]
 "5432/tcp" = ""
@@ -31,7 +31,7 @@ POSTGRES_MAIN_PORT = "{PORT;5432/tcp}"
 POSTGRES_MAIN_DBNAME = "{POSTGRES_DB}"
 
 [services.cache]
-image = "redis:latest"
+image = "docker.io/redis:latest"
 
 [services.cache.ports]
 "6379/tcp" = ""

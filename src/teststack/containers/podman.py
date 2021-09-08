@@ -93,6 +93,9 @@ class Client:
                 }
             )
 
+        if command is True:
+            command = ['/bin/tail', '-f', '/dev/null']
+
         if ports:
             for port, hostport in ports.items():
                 if not hostport:
@@ -101,17 +104,21 @@ class Client:
         if not self.image_get(image):
             self.client.images.pull(image)
 
-        return self.client.containers.run(
+        container = self.client.containers.create(
             name=name,
             image=image,
             detach=True,
             stream=stream,
-            user='root',
             ports=ports or {},
             environment=environment or {},
             command=command,
             mounts=mounts,
-        ).id
+        )
+
+        container.start()
+        container.wait(condition="running")
+
+        return container.id
 
     def image_get(self, tag):
         try:
@@ -132,7 +139,8 @@ class Client:
             click.echo(line, nl=False)
 
     def build(self, dockerfile, tag, rebuild):
-        return self.client.images.build(path='.', dockerfile=dockerfile, tag=tag, nocache=rebuild, rm=True)
+        image, _ = self.client.images.build(path='.', dockerfile=dockerfile, tag=tag, nocache=rebuild, rm=True)
+        return image.id
 
     def get_container_data(self, name, inside=False):
         data = {}

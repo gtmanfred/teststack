@@ -35,14 +35,16 @@ def start(ctx, no_tests):
         image = client.image_get(ctx.invoke(build))
 
     name = f'{ctx.obj["project_name"]}_tests'
+
     current_image_id = client.container_get_current_image(name)
     if current_image_id != image:
         client.end_container(name)
         current_image_id = None
+    else:
+        container = client.container_get(name)
+
     if current_image_id is None:
-        command = ctx.obj['tests'].get('command', None)
-        if command is None:  # pragma: no branch
-            command = "sh -c 'trap \"trap - TERM; kill -s TERM -- -$$\" TERM; tail -f /dev/null & wait'"
+        command = ctx.obj['tests'].get('command', True)
 
         container = client.run(
             image=image,
