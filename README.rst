@@ -16,6 +16,9 @@ Teststack
 .. image:: https://img.shields.io/pypi/dm/teststack
     :target: https://pypi.org/project/figenv/
 
+.. image:: https://readthedocs.org/projects/teststack/badge?version=latest&style=flat
+    :target: https://teststack.readthedocs.org/
+
 Test an application with infrastructure.
 
 teststack.toml

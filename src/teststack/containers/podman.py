@@ -1,3 +1,20 @@
+"""
+Client for interfacing with podman.
+
+To enable using podman as the container interface, specify the following section
+in the ``teststack.toml``
+
+.. code-block:: toml
+
+    [client]
+    name = "podman"
+
+There is an extra provided to install the ``podman`` dependency.
+
+.. code-block:: shell
+
+    python3 -m pip install teststack[podman]
+"""
 import json
 import os
 import platform

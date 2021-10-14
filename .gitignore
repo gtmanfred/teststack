@@ -13,3 +13,4 @@ _version.py
 /htmlcov
 coverage.xml
 .coverage*
+docs/_html
