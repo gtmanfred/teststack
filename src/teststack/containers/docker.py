@@ -79,7 +79,7 @@ class Client:
         socket = container.exec_run(
             cmd=command,
             tty=True,
-            socket=True,
+            stream=True,
         )
 
         for line in socket.output:
