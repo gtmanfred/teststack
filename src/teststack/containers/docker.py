@@ -103,6 +103,7 @@ class Client:
             container = self.client.containers.get(name)
         except docker.errors.NotFound:
             return None
+        self.start(name)
         data['HOST'] = container.attrs['NetworkSettings']['IPAddress'] if inside else 'localhost'
         for port, port_data in container.attrs['NetworkSettings']['Ports'].items():
             if inside:
