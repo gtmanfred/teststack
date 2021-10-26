@@ -16,7 +16,7 @@ def start(ctx, no_tests):
         name = f'{ctx.obj["project_name"]}_{service}'
         container = client.container_get(name)
         if container is None:
-            client.run(
+            container = client.run(
                 image=data['image'],
                 ports=data.get('ports', {}),
                 name=name,
@@ -24,7 +24,8 @@ def start(ctx, no_tests):
                 environment=data.get('environment', {}),
                 mount_cwd=False,
             )
-        client.start(name=name)
+        else:
+            client.start(name=name)
 
     if no_tests is True:
         return
