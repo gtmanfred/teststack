@@ -24,6 +24,7 @@ def start(ctx, no_tests):
                 environment=data.get('environment', {}),
                 mount_cwd=False,
             )
+        client.start(name=name)
 
     if no_tests is True:
         return

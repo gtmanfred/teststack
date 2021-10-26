@@ -67,6 +67,9 @@ class Client:
             volumes=volumes,
         ).id
 
+    def start(self, name):
+        self.client.containers.get(name).start()
+
     def image_get(self, tag):
         try:
             return self.client.images.get(tag).id
