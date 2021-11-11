@@ -8,7 +8,12 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.6, 3.7, 3.8, 3.9]
+        python-version:
+        - 3.6
+        - 3.7
+        - 3.8
+        - 3.9
+        - '3.10'
 
     steps:
     - uses: actions/checkout@v2
@@ -22,10 +27,9 @@ jobs:
       run: |
         python -m site
         python -m pip install tox tox-gh-actions
-        docker ps -a
 
     - name: Unit tests
-      run: tox -- tests/unit/
+      run: tox -- tests/unit/ --junit-xml pytest.xml
 
     - name: Codecov.io
       uses: codecov/codecov-action@v1.3.2
@@ -33,3 +37,9 @@ jobs:
         file: ./coverage.xml
         flags: unittests
         fail_ci_if_error: true
+
+    - name: Publish Test Report
+      uses: mikepenz/action-junit-report@v2
+      if: always()
+      with:
+        report_paths: pytest.xml
