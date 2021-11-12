@@ -1,5 +1,6 @@
 import json
 import os.path
+import sys
 
 import click
 import jinja2
@@ -150,6 +151,10 @@ def build(ctx, rebuild, tag, dockerfile):
 
     click.echo(f'Build Image: {tag}')
     client.build(dockerfile, tag, rebuild)
+    image = client.image_get(tag)
+    if image is None:
+        click.echo(click.style('Failed to build image!', fg='red'))
+        sys.exit(11)
 
     return tag
 
