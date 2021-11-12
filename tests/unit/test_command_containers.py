@@ -130,12 +130,12 @@ def test_container_start_with_tests_without_image(runner, attrs):
     client = mock.MagicMock()
     client.containers.get.return_value.attrs = attrs
     image = mock.MagicMock()
-    client.images.get.side_effect = [ImageNotFound('image not found'), image, image]
+    client.images.get.side_effect = [ImageNotFound('image not found'), image, image, image]
     with mock.patch('docker.from_env', return_value=client):
         result = runner.invoke(cli, ['start'])
     assert client.containers.get.call_count == 11
     assert client.containers.run.called is True
-    assert client.images.get.call_count == 3
+    assert client.images.get.call_count == 4
     assert result.exit_code == 0
 
 
