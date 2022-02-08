@@ -41,17 +41,21 @@ class Client:
             self.client = podman.from_env()
 
     def _get_connection(self, name):
-        connections = json.loads(
-            subprocess.check_output(
-                [
-                    'podman',
-                    'system',
-                    'connection',
-                    'list',
-                    '--format=json',
-                ]
-            ),
+        connections = subprocess.check_output(
+            [
+                'podman',
+                'system',
+                'connection',
+                'list',
+                '--format=json',
+            ]
         )
+
+        if connections:
+            connections = json.loads(connections)
+        else:
+            return {}
+
         for connection in connections:
             if connection['Name'].endswith(name):
                 return {
@@ -59,9 +63,6 @@ class Client:
                     'identity': connection['Identity'],
                 }
         return {}
-
-    def __del__(self):
-        self.client.close()
 
     def end_container(self, name):
         try:
@@ -104,14 +105,14 @@ class Client:
         if mount_cwd is True:
             mounts.append(
                 {
-                    'Source': os.getcwd(),
-                    'Destination': self.client.images.get(image).attrs['Config']['WorkingDir'],
-                    'Mode': 'rw',
+                    'source': os.getcwd(),
+                    'target': self.client.images.get(image).attrs['Config']['WorkingDir'],
+                    'type': 'bind',
                 }
             )
 
         if command is True:
-            command = ['/bin/tail', '-f', '/dev/null']
+            command = ['tail', '-f', '/dev/null']
 
         if ports:
             for port, hostport in ports.items():
@@ -138,7 +139,8 @@ class Client:
         return container.id
 
     def start(self, name):
-        self.client.containers.get(name=name).start()
+        container = self.container_get(name)
+        self.client.containers.get(container).start()
 
     def image_get(self, tag):
         try:
