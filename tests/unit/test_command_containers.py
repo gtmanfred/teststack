@@ -13,7 +13,7 @@ def test_render(runner, tag):
         result = runner.invoke(cli, ['render', f'--dockerfile={tmpfile.name}'])
         assert result.exit_code == 0
         with open(tmpfile.name, 'r') as fh_:
-            assert fh_.readline() == 'FROM python:slim\n'
+            assert fh_.readline() == 'FROM docker.io/python:slim\n'
             assert fh_.readline() == 'ENV PYTHON=True\n'
             assert fh_.readline() == 'WORKDIR /srv\n'
             assert fh_.readline() == '\n'
@@ -30,7 +30,7 @@ def test_render_isolated(runner):
         result = runner.invoke(cli, [f'--path={th_}', 'render'])
         assert result.exit_code == 0
         with open('Dockerfile', 'r') as fh_:
-            assert fh_.readline() == 'FROM python:slim\n'
+            assert fh_.readline() == 'FROM docker.io/python:slim\n'
             assert fh_.readline() == 'ENV PYTHON=True\n'
             assert fh_.readline() == 'WORKDIR /srv\n'
             assert not fh_.readline()
