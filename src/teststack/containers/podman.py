@@ -18,6 +18,7 @@ There is an extra provided to install the ``podman`` dependency.
 import json
 import os
 import platform
+import socket
 import subprocess
 
 import click
@@ -39,6 +40,16 @@ class Client:
             self.client = podman.PodmanClient(**kws)
         else:
             self.client = podman.from_env()
+
+    def _process_image_shortname(self, name, default='docker.io'):
+        if '/' in name:
+            domain = name.split('/')[0]
+            try:
+                socket.getaddrinfo(domain, 443)
+                return name
+            except socket.gaierror:
+                pass
+        return f'docker.io/{name}'
 
     def _get_connection(self, name):
         connections = subprocess.check_output(
@@ -120,7 +131,7 @@ class Client:
                     ports[port] = None
 
         if not self.image_get(image):
-            self.client.images.pull(image)
+            self.client.images.pull(self._process_image_shortname(image))
 
         container = self.client.containers.create(
             name=name,
@@ -144,7 +155,7 @@ class Client:
 
     def image_get(self, tag):
         try:
-            return self.client.images.get(tag).id
+            return self.client.images.get(self._process_image_shortname(tag)).id
         except podman.errors.ImageNotFound:
             return None
 
