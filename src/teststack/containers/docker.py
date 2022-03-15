@@ -7,7 +7,14 @@ import docker.errors
 
 class Client:
     def __init__(self, **kwargs):
-        self.client = docker.from_env()
+        context = docker.ContextAPI.get_current_context()
+        if context.name == 'default':
+            self.client = docker.from_env()
+        else:
+            self.client = docker.DockerClient(
+                base_url=context.Host,
+                tls=context.TLSConfig,
+            )
 
     def end_container(self, name):
         try:
