@@ -101,9 +101,3 @@ file for something like vscode to read.
 
     $ source <(teststack env)
     $ teststack env --no-export > .env
-
-Tests
------
-
-Once I can figure out why github actions do not want to install the ``commands``
-directory, I will write more tests.

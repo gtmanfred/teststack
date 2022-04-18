@@ -18,6 +18,25 @@ from teststack import cli
 @click.option('--quiet', '-q', is_flag=True, help='Do not print out information')
 @click.pass_context
 def env(ctx, no_export, inside, quiet):
+    """
+    Output the environment variables for the teststack environment.
+
+    --no-export, -n
+
+        Do not prefix each line with export, this is good for making .env files for
+        stuff like VSCode
+
+    --inside
+
+        export HOST and PORT values for inside of the containers. This is used
+        to set the environment variables in the ``tests`` container.
+
+    --quiet, -q
+
+        Do not print anything out, just return the environment variables. This
+        is for internal use so that the variables are not printed out when
+        called inside teststack
+    """
     envvars = []
     client = ctx.obj['client']
     for service, data in ctx.obj['services'].items():
