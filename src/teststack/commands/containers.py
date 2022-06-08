@@ -244,7 +244,8 @@ def build(ctx, rebuild, tag, dockerfile, template_file):
         dockerstat = None
 
     if tempstat is not None and (dockerstat is None or dockerstat.st_mtime < tempstat.st_mtime):
-        ctx.invoke(render, dockerfile=dockerfile, template_file=template_file)
+        with open(template_file, 'r') as th_:
+            ctx.invoke(render, dockerfile=dockerfile, template_file=th_)
 
     client = ctx.obj['client']
 
