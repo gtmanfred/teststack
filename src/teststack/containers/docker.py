@@ -1,8 +1,13 @@
 import json
 import os
+import select
+import socket
+import sys
 
 import click
 import docker.errors
+
+from ..utils import read_from_stdin
 
 
 class Client:
@@ -86,14 +91,25 @@ class Client:
     def run_command(self, container, command):
         container = self.client.containers.get(container)
         click.echo(click.style(f'Run Command: {command}', fg='green'))
-        socket = container.exec_run(
+        sock = container.exec_run(
             cmd=command,
             tty=True,
-            stream=True,
-        )
+            stdin=True,
+            socket=True,
+        ).output
 
-        for line in socket.output:
-            click.echo(line, nl=False)
+        with read_from_stdin() as fd:
+            BREAK = False
+            while not BREAK:
+                reads, _, _ = select.select([sock._sock, fd], [], [], 0.0)
+                for read in reads:
+                    if isinstance(read, socket.socket):
+                        line = read.recv(4096)
+                        if not line:
+                            BREAK = True
+                        click.echo(line, nl=False)
+                    else:
+                        sock._sock.send(sys.stdin.read(1).encode('utf-8'))
 
     def build(self, dockerfile, tag, rebuild):
         for chunk in self.client.api.build(path='.', dockerfile=dockerfile, tag=tag, nocache=rebuild, rm=True):

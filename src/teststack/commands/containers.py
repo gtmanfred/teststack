@@ -86,7 +86,6 @@ def start(ctx, no_tests):
             image=image,
             stream=True,
             name=name,
-            user=0,
             environment=env,
             command=command,
             mount_cwd=True,
