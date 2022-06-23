@@ -99,17 +99,21 @@ class Client:
         ).output
 
         with read_from_stdin() as fd:
-            BREAK = False
-            while not BREAK:
-                reads, _, _ = select.select([sock._sock, fd], [], [], 0.0)
-                for read in reads:
-                    if isinstance(read, socket.socket):
-                        line = read.recv(4096)
-                        if not line:
-                            BREAK = True
-                        click.echo(line, nl=False)
-                    else:
-                        sock._sock.send(sys.stdin.read(1).encode('utf-8'))
+            if fd is not None:
+                BREAK = False
+                while not BREAK:
+                    reads, _, _ = select.select([sock._sock, fd], [], [], 0.0)
+                    for read in reads:
+                        if isinstance(read, socket.socket):
+                            line = read.recv(4096)
+                            if not line:
+                                BREAK = True
+                            click.echo(line, nl=False)
+                        else:
+                            sock._sock.send(sys.stdin.read(1).encode('utf-8'))
+            else:
+                for line in sock:
+                    click.echo(line, nl=False)
 
     def build(self, dockerfile, tag, rebuild):
         for chunk in self.client.api.build(path='.', dockerfile=dockerfile, tag=tag, nocache=rebuild, rm=True):
