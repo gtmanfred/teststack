@@ -99,7 +99,7 @@ class Client:
         ).output
 
         with read_from_stdin() as fd:
-            if fd is not None:
+            if fd is not None:  # pragma: no cover
                 BREAK = False
                 while not BREAK:
                     reads, _, _ = select.select([sock._sock, fd], [], [], 0.0)

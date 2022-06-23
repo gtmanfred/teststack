@@ -6,7 +6,7 @@ import tty
 
 @contextlib.contextmanager
 def read_from_stdin():
-    if sys.stdin.isatty():
+    if sys.stdin.isatty():  # pragma: no cover
         fd = sys.stdin.fileno()
         orig_fl = termios.tcgetattr(fd)
         tty.setcbreak(fd)  # use tty.setraw() instead to catch ^C also
