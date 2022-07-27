@@ -1,7 +1,4 @@
-import string
-
 import click
-import docker
 
 from teststack import cli
 

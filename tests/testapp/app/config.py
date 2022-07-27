@@ -8,7 +8,7 @@ class Config(metaclass=figenv.MetaConfig):
     POSTGRES_MAIN_PORT = 5432
     POSTGRES_MAIN_DBNAME = 'app'
 
-    def SQLALCHEMY_DATABASE_URI(cls):
+    def SQLALCHEMY_DATABASE_URI(cls):  # lgtm [py/not-named-self]
         return 'postgresql://{user}:{password}@{host}:{port}/{dbname}?sslmode=prefer'.format(
             user=cls.POSTGRES_MAIN_USER,
             password=cls.POSTGRES_MAIN_PASSWORD,
@@ -21,7 +21,7 @@ class Config(metaclass=figenv.MetaConfig):
     REDIS_MAIN_HOST = 'localhost'
     REDIS_MAIN_PORT = 6379
 
-    def CACHE_REDIS_URL(cls):
+    def CACHE_REDIS_URL(cls):  # lgtm [py/not-named-self]
         return 'redis://@{host}:{port}/0'.format(
             host=cls.REDIS_MAIN_HOST,
             port=cls.REDIS_MAIN_PORT,

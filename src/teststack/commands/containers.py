@@ -50,7 +50,7 @@ def start(ctx, no_tests):
         name = f'{ctx.obj["project_name"]}_{service}'
         container = client.container_get(name)
         if container is None:
-            container = client.run(
+            client.run(
                 image=data['image'],
                 ports=data.get('ports', {}),
                 name=name,
