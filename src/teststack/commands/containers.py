@@ -276,6 +276,12 @@ def exec(ctx):  # pragma: no cover
 
 
 @cli.command()
+@click.pass_context
+def tag(ctx):
+    click.echo(ctx.obj['tag'])
+
+
+@cli.command()
 @click.option('--step', '-s', help='Which step to run')
 @click.argument('posargs', nargs=-1, type=click.UNPROCESSED)
 @click.pass_context

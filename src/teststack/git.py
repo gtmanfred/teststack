@@ -4,7 +4,9 @@ import pathlib
 import git.exc
 
 
-def get_tag():
+def get_tag(prefix=''):
+    if prefix and not prefix.endswith('/'):
+        prefix = f'{prefix}/'
     try:
         repo = git.Repo('.')
         name = pathlib.Path(repo.remote('origin').url)
@@ -14,17 +16,19 @@ def get_tag():
                 repo.head.commit.hexsha,
             ]
         )
+        tag = f'{prefix}{tag}'
         return {
             'tag': tag,
             'commit': repo.head.commit.hexsha,
             'branch': None if repo.head.is_detached else repo.active_branch.name,
         }
     except git.exc.InvalidGitRepositoryError:
+        tag = ':'.join(
+            [
+                os.path.basename(os.getcwd()),
+                'latest',
+            ]
+        )
         return {
-            'tag': ':'.join(
-                [
-                    os.path.basename(os.getcwd()),
-                    'latest',
-                ]
-            ),
+            'tag': f'{prefix}/{tag}'
         }
