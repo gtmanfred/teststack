@@ -29,6 +29,4 @@ def get_tag(prefix=''):
                 'latest',
             ]
         )
-        return {
-            'tag': f'{prefix}/{tag}'
-        }
+        return {'tag': f'{prefix}/{tag}'}
