@@ -116,7 +116,9 @@ class Client:
                     click.echo(line, nl=False)
 
     def build(self, dockerfile, tag, rebuild):
-        for data in self.client.api.build(path='.', dockerfile=dockerfile, tag=tag, nocache=rebuild, decode=True, rm=True):
+        for data in self.client.api.build(
+            path='.', dockerfile=dockerfile, tag=tag, nocache=rebuild, decode=True, rm=True
+        ):
             if 'stream' in data:
                 click.echo(data['stream'], nl=False)
 
