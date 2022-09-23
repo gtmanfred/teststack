@@ -116,13 +116,11 @@ class Client:
                     click.echo(line, nl=False)
 
     def build(self, dockerfile, tag, rebuild):
-        for chunk in self.client.api.build(path='.', dockerfile=dockerfile, tag=tag, nocache=rebuild, rm=True):
-            for line in chunk.split(b'\r\n'):
-                if not line:
-                    continue
-                data = json.loads(line)
-                if 'stream' in data:
-                    click.echo(data['stream'], nl=False)
+        for data in self.client.api.build(
+            path='.', dockerfile=dockerfile, tag=tag, nocache=rebuild, decode=True, rm=True
+        ):
+            if 'stream' in data:
+                click.echo(data['stream'], nl=False)
 
     def get_container_data(self, name, inside=False):
         data = {}

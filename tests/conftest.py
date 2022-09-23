@@ -1,3 +1,4 @@
+import json
 import pathlib
 
 import click.testing
@@ -42,10 +43,13 @@ def attrs():
 def build_output():
     chunks = []
     with open('tests/files/build.output', 'rb') as fh_:
-        for line in fh_:
-            line = line.replace(b'\\r\\n', b'\r\n')
-            line = line.replace(b'\\\\', b'\\')
-            chunks.append(line)
+        for chunk in fh_:
+            chunk = chunk.replace(b'\\r\\n', b'\r\n')
+            chunk = chunk.replace(b'\\\\', b'\\')
+            for line in chunk.split(b'\r\n'):
+                if not line:
+                    continue
+                chunks.append(json.loads(line))
     return chunks
 
 

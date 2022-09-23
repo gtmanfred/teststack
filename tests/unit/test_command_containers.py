@@ -122,7 +122,14 @@ def test_container_build(runner, build_output):
     client.api.build.return_value = build_output
     with mock.patch('docker.from_env', return_value=client):
         result = runner.invoke(cli, ['build', '--tag=blah'])
-    client.api.build.assert_called_with(path='.', dockerfile='Dockerfile', tag='blah', nocache=False, rm=True)
+    client.api.build.assert_called_with(
+        path='.',
+        dockerfile='Dockerfile',
+        tag='blah',
+        nocache=False,
+        rm=True,
+        decode=True,
+    )
     assert result.exit_code == 0
 
 
