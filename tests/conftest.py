@@ -1,3 +1,4 @@
+import json
 import pathlib
 
 import click.testing
@@ -45,7 +46,7 @@ def build_output():
         for line in fh_:
             line = line.replace(b'\\r\\n', b'\r\n')
             line = line.replace(b'\\\\', b'\\')
-            chunks.append(line)
+            chunks.append(json.load(line))
     return chunks
 
 
