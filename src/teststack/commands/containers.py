@@ -17,7 +17,7 @@ the tests you could do the following.
 
     teststack build --rebuild run
 """
-import os.path
+import os
 import sys
 
 import click
@@ -191,9 +191,11 @@ def render(ctx, template_file, dockerfile):
         ),
     )
     template.stream(
-        GIT_BRANCH=ctx.obj.get('branch', 'dev'),
-        GIT_COMMIT_HASH=ctx.obj.get('commit', None),
-        **os.environ,
+        **{
+            'GIT_BRANCH': ctx.obj.get('branch', 'dev'),
+            'GIT_COMMIT_HASH': ctx.obj.get('commit', None),
+            **os.environ,
+        }
     ).dump(dockerfile)
 
 

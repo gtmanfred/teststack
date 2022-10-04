@@ -1,4 +1,4 @@
-import pathlib
+import os
 import tempfile
 from unittest import mock
 
@@ -19,6 +19,13 @@ def test_render(runner, tag):
             assert fh_.readline() == '\n'
             assert 'docker-metadata' in fh_.readline()
             assert tag['commit'] in fh_.readline()
+
+
+def test_render_with_env_var_override(runner):
+    with tempfile.NamedTemporaryFile() as tmpfile:
+        with mock.patch.dict(os.environ, {'GIT_BRANCH': 'other'}):
+            result = runner.invoke(cli, ['render', f'--dockerfile={tmpfile.name}'])
+            assert result.exit_code == 0
 
 
 def test_render_isolated(runner):
