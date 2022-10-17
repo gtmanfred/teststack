@@ -48,6 +48,7 @@ def start(ctx, no_tests):
     client = ctx.obj['client']
     for service, data in ctx.obj['services'].items():
         name = f'{ctx.obj["project_name"]}_{service}'
+        click.echo(f'Starting container: {name}')
         container = client.container_get(name)
         if container is None:
             client.run(
