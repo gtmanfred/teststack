@@ -88,7 +88,7 @@ class Client:
         except docker.errors.ImageNotFound:
             return None
 
-    def run_command(self, container, command):
+    def run_command(self, container, command, user=None):
         container = self.client.containers.get(container)
         click.echo(click.style(f'Run Command: {command}', fg='green'))
         sock = container.exec_run(
@@ -96,6 +96,7 @@ class Client:
             tty=True,
             stdin=True,
             socket=True,
+            user=user or '',
         ).output
 
         with read_from_stdin() as fd:

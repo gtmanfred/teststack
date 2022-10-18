@@ -159,13 +159,14 @@ class Client:
         except podman.errors.ImageNotFound:
             return None
 
-    def run_command(self, container, command):
+    def run_command(self, container, command, user=None):
         container = self.client.containers.get(container)
         click.echo(click.style(f'Run Command: {command}', fg='green'))
         socket = container.exec_run(
             cmd=command,
             tty=True,
             socket=True,
+            user=user,
         )
 
         for line in socket.output:
