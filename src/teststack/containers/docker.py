@@ -91,13 +91,19 @@ class Client:
     def run_command(self, container, command, user=None):
         container = self.client.containers.get(container)
         click.echo(click.style(f'Run Command: {command}', fg='green'))
-        sock = container.exec_run(
-            cmd=command,
-            tty=True,
+        exec_id = container.client.api.exec_create(
+            container.id,
+            command,
             stdin=True,
-            socket=True,
+            tty=True,
             user=user or '',
-        ).output
+        )['Id']
+
+        sock = container.client.api.exec_start(
+            exec_id,
+            tty=True,
+            socket=True,
+        )
 
         with read_from_stdin() as fd:
             if fd is not None:  # pragma: no cover
@@ -115,6 +121,8 @@ class Client:
             else:
                 for line in sock:
                     click.echo(line, nl=False)
+
+        return container.client.api.exec_inspect(exec_id)['ExitCode']
 
     def build(self, dockerfile, tag, rebuild):
         for data in self.client.api.build(

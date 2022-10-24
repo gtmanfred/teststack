@@ -1,7 +1,7 @@
 import os.path
 import pathlib
 import sys
-from distutils.version import LooseVersion
+from packaging.version import Version
 
 import click
 import toml
@@ -55,8 +55,8 @@ def cli(ctx, config, project_name, path):
     else:
         config = {}
 
-    min_version = LooseVersion(config.get('tests', {}).get('min_version', 'v0.0.0').lstrip('v'))
-    if min_version > LooseVersion(__version__):
+    min_version = Version(config.get('tests', {}).get('min_version', 'v0.0.0').lstrip('v'))
+    if min_version > Version(__version__):
         click.echo(f'Current teststack version is too low, upgrade to atleast {min_version}', err=True)
         sys.exit(10)
 

@@ -157,11 +157,14 @@ def test_container_run(runner, attrs):
     client = mock.MagicMock()
     client.containers.get.return_value.attrs = attrs
     client.images.get.return_value.id = client.containers.get.return_value.image.id
-    client.containers.get.return_value.exec_run.return_value.output = [
+    client.containers.get.return_value.client.api.exec_start.return_value = [
         'foo',
         'bar',
         'baz',
     ]
+    client.containers.get.return_value.client.api.exec_inspect.return_value = {
+        'ExitCode': 0,
+    }
     with mock.patch('docker.from_env', return_value=client):
         result = runner.invoke(cli, ['run'])
     assert client.containers.get.call_count == 14
@@ -175,11 +178,14 @@ def test_container_run_step(runner, attrs):
     client = mock.MagicMock()
     client.containers.get.return_value.attrs = attrs
     client.images.get.return_value.id = client.containers.get.return_value.image.id
-    client.containers.get.return_value.exec_run.return_value.output = [
+    client.containers.get.return_value.client.api.exec_start.return_value = [
         'foo',
         'bar',
         'baz',
     ]
+    client.containers.get.return_value.client.api.exec_inspect.return_value = {
+        'ExitCode': 0,
+    }
     with mock.patch('docker.from_env', return_value=client):
         result = runner.invoke(cli, ['run', '--step=install'])
     assert client.containers.get.call_count == 13

@@ -14,3 +14,6 @@ _version.py
 coverage.xml
 .coverage*
 docs/_html
+
+# pytest files
+pytest.xml

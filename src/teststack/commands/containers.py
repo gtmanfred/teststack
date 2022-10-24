@@ -314,24 +314,31 @@ def run(ctx, step, posargs):
         commands = [steps.get(step, '{posargs}')]
     else:
         commands = steps.values()
+    exit_code = 0
     for command in commands:
         user = None
         if isinstance(command, list):
             for cmd in command:
                 if isinstance(cmd, dict):
                     cmd, user = cmd['command'], cmd.get('user')
-                client.run_command(
+                ret = client.run_command(
                     container,
                     cmd.format(posargs=' '.join(posargs)),
                     user=user,
                 )
+                if ret:
+                    exit_code = ret
         elif isinstance(command, dict):
             cmd, user = command['command'], command['user']
 
-            client.run_command(
+            ret = client.run_command(
                 container,
                 cmd.format(posargs=' '.join(posargs)),
                 user=user,
             )
         else:
-            client.run_command(container, command.format(posargs=' '.join(posargs)))
+            ret = client.run_command(container, command.format(posargs=' '.join(posargs)))
+        if ret:
+            exit_code = ret
+    if exit_code:
+        sys.exit(exit_code)

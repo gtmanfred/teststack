@@ -162,7 +162,7 @@ class Client:
     def run_command(self, container, command, user=None):
         container = self.client.containers.get(container)
         click.echo(click.style(f'Run Command: {command}', fg='green'))
-        socket = container.exec_run(
+        exit_code, socket = container.exec_run(
             cmd=command,
             tty=True,
             socket=True,
@@ -171,6 +171,7 @@ class Client:
 
         for line in socket.output:
             click.echo(line, nl=False)
+        return exit_code
 
     def build(self, dockerfile, tag, rebuild):
         image, _ = self.client.images.build(path='.', dockerfile=dockerfile, tag=tag, nocache=rebuild, rm=True)

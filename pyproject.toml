@@ -30,3 +30,44 @@ log_cli_level = "critical"
 junit_family = "xunit2"
 testpaths = "tests/"
 norecursedirs = ".git .tox tests/testapp"
+
+[tool.tox]
+legacy_tox_ini = """
+[tox]
+envlist = py37,py38,py39,py310,syntax,report
+skip_missing_interpreters = true
+isolated_build = True
+
+# Keep docs in sync with docs env and .readthedocs.yml.
+[gh-actions]
+python =
+    3.7: py37, report
+    3.8: py38, syntax, report
+    3.9: py39, report
+    3.10: py310, report
+    3.11: py311, report
+
+[testenv]
+extras = tests
+setenv =
+    COVERAGE_FILE=.coverage.{envname}
+passenv = DOCKER_TLS_VERIFY DOCKER_HOST DOCKER_CERT_PATH
+commands =
+    coverage run -m pytest -v {posargs}
+
+[testenv:report]
+setenv =
+    COVERAGE_FILE=
+skip_install = true
+deps = coverage[toml]>=5.4
+commands =
+    coverage combine
+    coverage report
+    coverage html
+    coverage xml
+
+[testenv:syntax]
+skip_install = true
+deps = black
+commands = black --check --diff --skip-string-normalization .
+"""
