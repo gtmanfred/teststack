@@ -342,3 +342,26 @@ def run(ctx, step, posargs):
             exit_code = ret
     if exit_code:
         sys.exit(exit_code)
+
+
+@cli.command()
+@click.pass_context
+def status(ctx):
+    """
+    Show status of containers
+
+    .. code-block:: bash
+
+        teststack status
+    """
+    client = ctx.obj['client']
+    click.echo('{:_^16}|{:_^36}|{:_^16}'.format('status', 'name', 'data'))
+    for service, data in ctx.obj['services'].items():
+        name = f'{ctx.obj["project_name"]}_{service}'
+        container = client.get_container_data(name) or {}
+        container.pop('HOST', None)
+        click.echo('{:^16}|{:^36}|{:^16}'.format(client.status(name), name, str(container)))
+    name = f'{ctx.obj["project_name"]}_tests'
+    container = client.get_container_data(name) or {}
+    container.pop('HOST', None)
+    click.echo('{:^16}|{:^36}|{:^16}'.format(client.status(name), name, str(container)))

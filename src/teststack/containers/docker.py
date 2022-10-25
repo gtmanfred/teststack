@@ -82,6 +82,12 @@ class Client:
     def start(self, name):
         self.client.containers.get(name).start()
 
+    def status(self, name):
+        try:
+            return self.client.containers.get(name).status
+        except docker.errors.NotFound:
+            return 'notfound'
+
     def image_get(self, tag):
         try:
             return self.client.images.get(tag).id
