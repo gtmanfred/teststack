@@ -110,12 +110,13 @@ class Client:
             tty=True,
             socket=True,
         )
+        sock = getattr(sock, '_sock', sock)
 
         with read_from_stdin() as fd:
             if fd is not None:  # pragma: no cover
                 BREAK = False
                 while not BREAK:
-                    reads, _, _ = select.select([sock._sock, fd], [], [], 0.0)
+                    reads, _, _ = select.select([sock, fd], [], [], 0.0)
                     for read in reads:
                         if isinstance(read, socket.socket):
                             line = read.recv(4096)
@@ -123,7 +124,7 @@ class Client:
                                 BREAK = True
                             click.echo(line, nl=False)
                         else:
-                            sock._sock.send(sys.stdin.read(1).encode('utf-8'))
+                            sock.send(sys.stdin.read(1).encode('utf-8'))
             else:
                 for line in sock:
                     click.echo(line, nl=False)
