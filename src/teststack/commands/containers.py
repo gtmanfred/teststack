@@ -28,8 +28,9 @@ from teststack import cli
 
 @cli.command()
 @click.option('--no-tests', '-n', is_flag=True, help='Don\'t start the tests container')
+@click.option('--no-mount', '-m', is_flag=True, help='Don\'t mount the current directory')
 @click.pass_context
-def start(ctx, no_tests):
+def start(ctx, no_tests, no_mount):
     """
     Start services and tests containers.
 
@@ -40,6 +41,10 @@ def start(ctx, no_tests):
     --no-tests, -n
 
         do not build an image or start a tests container
+
+    --no-mount, -m
+
+        do not mount the current directory as a volume
 
     .. code-block:: bash
 
@@ -89,7 +94,7 @@ def start(ctx, no_tests):
             name=name,
             environment=env,
             command=command,
-            mount_cwd=True,
+            mount_cwd=not no_mount,
         )
 
     return container
