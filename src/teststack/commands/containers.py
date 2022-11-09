@@ -97,6 +97,7 @@ def start(ctx, no_tests, no_mount):
             name=name,
             environment=env,
             command=command,
+            ports=ctx.obj.get('tests.ports', {}),
             mount_cwd=not no_mount,
         )
 

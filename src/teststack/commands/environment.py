@@ -48,8 +48,16 @@ def env(ctx, no_export, inside, quiet):
                     container_data,
                 )
             )
-    for key, value in ctx.obj['tests'].get('environment', {}).items():
-        envvars.append(f'{"" if no_export else "export "}{key}={value}')
+    name = f'{ctx.obj.get("project_name")}_tests'
+    container_data = client.get_container_data(name, inside=inside)
+    if container_data is not None:
+        for key, value in ctx.obj.get('tests.environment', {}).items():
+            envvars.append(f'{"" if no_export else "export "}{key}={value}'.format_map(
+                container_data,
+            ))
+    else:
+        for key, value in ctx.obj.get('tests.environment', {}).items():
+            envvars.append(f'{"" if no_export else "export "}{key}={value}')
     if quiet is False:
         click.echo('\n'.join(envvars))
     return envvars
