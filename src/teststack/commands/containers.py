@@ -18,7 +18,6 @@ the tests you could do the following.
     teststack build --rebuild run
 """
 import os
-import subprocess
 import sys
 
 import click
@@ -436,27 +435,26 @@ def import_(ctx, repo, ref, stop):
         teststack import --repo ssh://github.com/org/repo.git
     """
     path = get_path(repo, ref)
+    runner = click.testing.CliRunner()
     if stop is True:
-        subprocess.run(
+        click.echo(f'Stopping import environment: {path}')
+        runner.invoke(
+            cli,
             [
-                sys.executable,
-                '-m',
-                'teststack',
                 f'--path={path}',
                 'stop',
                 f'--prefix={ctx.obj.get("project_name")}.',
-            ]
+            ],
         )
     else:
-        subprocess.run(
+        click.echo(f'Starting import environment: {path}')
+        runner.invoke(
+            cli,
             [
-                sys.executable,
-                '-m',
-                'teststack',
                 f'--path={path}',
                 'start',
                 '-m',
                 '--imp',
                 f'--prefix={ctx.obj.get("project_name")}.',
-            ]
+            ],
         )

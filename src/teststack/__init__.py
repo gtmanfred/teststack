@@ -55,6 +55,10 @@ def cli(ctx, config, project_name, path):
     ctx.ensure_object(DictConfig)
     config = pathlib.Path(config)
 
+    @ctx.call_on_close
+    def change_dir_to_original():
+        os.chdir(ctx.obj['currentdir'])
+
     # change dir before everything else is calculated
     ctx.obj['currentdir'] = os.getcwd()
     os.chdir(path)

@@ -1,7 +1,4 @@
-import sys
-import subprocess
-
-import click
+import click.testing
 
 from teststack import cli
 from teststack.git import get_path
@@ -48,20 +45,18 @@ def env(ctx, no_export, inside, quiet, prefix):
     for service, data in ctx.obj.get('services').items():
         if 'import' in data:
             path = get_path(**data['import'])
-            cmd = [
-                sys.executable,
-                '-m',
-                'teststack',
+            args = [
                 f'--path={path}',
                 'import-env',
                 f'--prefix={ctx.obj.get("project_name")}.',
             ]
             if no_export is True:
-                cmd.append('--no-export')
+                args.append('--no-export')
             if inside is True:
-                cmd.append('--inside')
-            result = subprocess.run(cmd, stdout=subprocess.PIPE)
-            envvars.extend(result.stdout.decode('utf-8').strip('\n').split('\n'))
+                args.append('--inside')
+            runner = click.testing.CliRunner()
+            result = runner.invoke(cli, args)
+            envvars.extend(result.stdout.strip('\n').split('\n'))
             continue
         name = f'{prefix}{ctx.obj.get("project_name")}_{service}'
         container_data = client.get_container_data(name, inside=inside)

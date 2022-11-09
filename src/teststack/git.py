@@ -15,7 +15,7 @@ def get_path(repo, ref=None):
         else:
             path.mkdir(exist_ok=True, parents=True)
             repo = git.Repo.clone_from(repo, str(path))
-        if ref is not None:
+        if ref:
             repo.checkout(ref)
 
     return path
