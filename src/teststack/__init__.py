@@ -26,7 +26,6 @@ except ImportError:  # pragma: no cover
 
 
 class DictConfig(dict):
-
     def get(self, key, default=None):
         rep = self
         for level in key.split('.'):
