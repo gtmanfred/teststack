@@ -56,7 +56,7 @@ def env(ctx, no_export, inside, quiet, prefix):
                 args.append('--inside')
             runner = click.testing.CliRunner()
             result = runner.invoke(cli, args)
-            envvars.extend(result.stdout.strip('\n').split('\n'))
+            envvars.extend([line for line in result.stdout.strip('\n').split('\n') if line])
             continue
         name = f'{prefix}{ctx.obj.get("project_name")}_{service}'
         container_data = client.get_container_data(name, inside=inside)

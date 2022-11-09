@@ -4,6 +4,7 @@ import urllib.parse
 
 import git.exc
 
+
 def get_path(repo, ref=None):
     if os.path.exists(repo):
         path = repo

@@ -6,7 +6,7 @@ import tty
 
 class read_from_stdin:
     def __enter__(self):
-        if hasattr(sys.stdin, 'isattynter') and sys.stdin.isattynter():  # pragma: no cover
+        if sys.stdin.isatty():  # pragma: no cover
             fd = sys.stdin.fileno()
             self.orig_fl = termios.tcgetattr(fd)
             tty.setcbreak(fd)  # use tty.setraw() instead to catch ^C also
