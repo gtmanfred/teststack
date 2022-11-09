@@ -57,6 +57,13 @@ def start(ctx, no_tests, no_mount):
     for service, data in ctx.obj.get('services').items():
         name = f'{ctx.obj.get("project_name")}_{service}'
         container = client.container_get(name)
+        if 'build' in data:
+            data['image'] = f'{ctx.obj.get("prefix")}{service}:{ctx.obj.get("commit", "latest")}'
+            ctx.invoke(
+                build,
+                directory=data['build'],
+                tag=data['image'],
+            )
         if container is None:
             click.echo(f'Starting container: {name}')
             client.run(
@@ -216,8 +223,9 @@ def render(ctx, template_file, dockerfile):
     '--dockerfile', '--file', '-f', type=click.Path(), default='Dockerfile', help='container build file to write too'
 )
 @click.option('--template-file', type=click.Path(), default='Dockerfile.j2', help='template to render with jinja')
+@click.option('--directory', type=click.Path(), default='.', help='Directory to build in')
 @click.pass_context
-def build(ctx, rebuild, tag, dockerfile, template_file):
+def build(ctx, rebuild, tag, dockerfile, template_file, directory):
     """
     Build the docker image using the dockerfile.
 
@@ -230,6 +238,10 @@ def build(ctx, rebuild, tag, dockerfile, template_file):
     --dockerfile, --file, -f
 
         dockerfile to build into an image. Default: Dockerfile
+
+    --directory, -d
+
+        directory to build inside. Default: .
 
     --rebuild, -r
 
@@ -264,7 +276,7 @@ def build(ctx, rebuild, tag, dockerfile, template_file):
         tag = ctx.obj['tag']
 
     click.echo(f'Build Image: {tag}')
-    client.build(dockerfile, tag, rebuild)
+    client.build(dockerfile, tag, rebuild, directory=directory)
     image = client.image_get(tag)
     if image is None:
         click.echo(click.style('Failed to build image!', fg='red'))

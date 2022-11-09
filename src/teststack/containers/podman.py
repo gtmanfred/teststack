@@ -173,8 +173,8 @@ class Client:
             click.echo(line, nl=False)
         return exit_code
 
-    def build(self, dockerfile, tag, rebuild):
-        image, _ = self.client.images.build(path='.', dockerfile=dockerfile, tag=tag, nocache=rebuild, rm=True)
+    def build(self, dockerfile, tag, rebuild, directory='.'):
+        image, _ = self.client.images.build(path=directory, dockerfile=dockerfile, tag=tag, nocache=rebuild, rm=True)
         return image.id
 
     def get_container_data(self, name, inside=False):
