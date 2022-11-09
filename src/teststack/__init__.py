@@ -25,6 +25,17 @@ except ImportError:  # pragma: no cover
         __version__ = 'v0.0.1'
 
 
+class DictConfig(dict):
+
+    def get(self, key, default=None):
+        rep = self
+        for level in key.split('.'):
+            if level not in rep:
+                return default
+            rep = rep[level]
+        return rep
+
+
 @click.group(chain=True)
 @click.option(
     '--config',
@@ -42,7 +53,7 @@ except ImportError:  # pragma: no cover
 @click.option('--path', '-p', default=os.getcwd(), type=click.Path(exists=True), help='Directory to run teststack in.')
 @click.pass_context
 def cli(ctx, config, project_name, path):
-    ctx.ensure_object(dict)
+    ctx.ensure_object(DictConfig)
     config = pathlib.Path(config)
 
     # change dir before everything else is calculated
@@ -51,11 +62,11 @@ def cli(ctx, config, project_name, path):
 
     if config.exists():
         with config.open('r') as fh_:
-            config = toml.load(fh_)
+            config = DictConfig(toml.load(fh_))
     else:
-        config = {}
+        config = DictConfig()
 
-    min_version = Version(config.get('tests', {}).get('min_version', 'v0.0.0').lstrip('v'))
+    min_version = Version(config.get('tests.min_version', 'v0.0.0').lstrip('v'))
     if min_version > Version(__version__):
         click.echo(f'Current teststack version is too low, upgrade to atleast {min_version}', err=True)
         sys.exit(10)
@@ -65,7 +76,7 @@ def cli(ctx, config, project_name, path):
     ctx.obj['project_name'] = os.path.basename(path.strip('/')) if project_name is None else project_name
 
     ctx.obj['client'] = get_client(config.get('client', {}))
-    ctx.obj.update(git.get_tag(prefix=config.get('client', {}).get('prefix', '')))
+    ctx.obj.update(git.get_tag(prefix=config.get('client.prefix', '')))
 
 
 def get_client(client):

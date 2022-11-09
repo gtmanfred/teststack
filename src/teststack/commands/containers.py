@@ -50,9 +50,12 @@ def start(ctx, no_tests, no_mount):
 
         teststack start --no-tests
     """
-    client = ctx.obj['client']
-    for service, data in ctx.obj['services'].items():
-        name = f'{ctx.obj["project_name"]}_{service}'
+    client = ctx.obj.get('client')
+    if no_mount is not True:
+        no_mount = not ctx.obj.get('tests.mount', True)
+
+    for service, data in ctx.obj.get('services').items():
+        name = f'{ctx.obj.get("project_name")}_{service}'
         container = client.container_get(name)
         if container is None:
             click.echo(f'Starting container: {name}')
@@ -76,7 +79,7 @@ def start(ctx, no_tests, no_mount):
     if image is None:
         image = client.image_get(ctx.invoke(build))
 
-    name = f'{ctx.obj["project_name"]}_tests'
+    name = f'{ctx.obj.get("project_name")}_tests'
 
     current_image_id = client.container_get_current_image(name)
     if current_image_id != image:
@@ -86,7 +89,7 @@ def start(ctx, no_tests, no_mount):
         container = client.container_get(name)
 
     if current_image_id is None:
-        command = ctx.obj['tests'].get('command', True)
+        command = ctx.obj.get('tests.command', True)
 
         container = client.run(
             image=image,
