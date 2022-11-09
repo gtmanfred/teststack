@@ -1,7 +1,24 @@
 import os
 import pathlib
+import urllib.parse
 
 import git.exc
+
+def get_path(repo, ref=None):
+    if os.path.exists(repo):
+        path = repo
+    else:
+        urlobj = urllib.parse.urlparse(repo)
+        path = pathlib.Path(f'.teststack/repos{urlobj.path}')
+        if path.exists():
+            repo = git.Repo(str(path))
+        else:
+            path.mkdir(exist_ok=True, parents=True)
+            repo = git.Repo.clone_from(repo, str(path))
+        if ref is not None:
+            repo.checkout(ref)
+
+    return path
 
 
 def get_tag(prefix=''):

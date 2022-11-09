@@ -15,6 +15,9 @@ install = [
 AWS_ACCESS_KEY_ID = "keyid"
 AWS_SECRET_ACCESS_KEY = "secret"
 
+[services.testapp.import]
+repo = "tests/testapp"
+
 [services.database]
 image = "docker.io/postgres:12"
 
