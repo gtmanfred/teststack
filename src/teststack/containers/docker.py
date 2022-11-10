@@ -13,13 +13,13 @@ from ..utils import read_from_stdin
 class Client:
     def __init__(self, **kwargs):
         context = docker.ContextAPI.get_current_context()
-        if context.name == 'default':
+        if context.name == 'default':  # pragma: no branch
             self.client = docker.from_env()
         else:
             self.client = docker.DockerClient(
                 base_url=context.Host,
                 tls=context.TLSConfig,
-            )
+            )  # pragma: no cover
 
     def end_container(self, name):
         try:
@@ -154,4 +154,4 @@ class Client:
         return data
 
     def exec(self, container):
-        os.execvp('docker', ['docker', 'exec', '-ti', container, 'bash'])
+        os.execvp('docker', ['docker', 'exec', '-ti', container, 'bash'])  # pragma: no cover

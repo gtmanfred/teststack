@@ -21,5 +21,5 @@ class read_from_stdin:
         return None
 
     def __exit__(self, exc_type, exc_val, traceback):
-        if getattr(self, 'orig_fl', None) is not None:
+        if getattr(self, 'orig_fl', None) is not None:  # pragma: no cover
             termios.tcsetattr(sys.stdin.fileno(), termios.TCSANOW, self.orig_fl)

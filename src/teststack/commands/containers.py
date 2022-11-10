@@ -65,11 +65,13 @@ def start(ctx, no_tests, no_mount, imp, prefix):
         container = client.container_get(name)
         if 'build' in data:
             data['image'] = f'{ctx.obj.get("prefix")}{service}:{ctx.obj.get("commit", "latest")}'
-            ctx.invoke(
-                build,
-                directory=data['build'],
-                tag=data['image'],
-            )
+            image = client.image_get(data['image'])
+            if image is None:
+                ctx.invoke(
+                    build,
+                    directory=data['build'],
+                    tag=data['image'],
+                )
         if container is None:
             click.echo(f'Starting container: {name}')
             client.run(
@@ -241,8 +243,9 @@ def render(ctx, template_file, dockerfile):
 )
 @click.option('--template-file', type=click.Path(), default='Dockerfile.j2', help='template to render with jinja')
 @click.option('--directory', type=click.Path(), default='.', help='Directory to build in')
+@click.option('--service', help='Service to build image for')
 @click.pass_context
-def build(ctx, rebuild, tag, dockerfile, template_file, directory):
+def build(ctx, rebuild, tag, dockerfile, template_file, directory, service):
     """
     Build the docker image using the dockerfile.
 
@@ -268,18 +271,26 @@ def build(ctx, rebuild, tag, dockerfile, template_file, directory):
 
         Tag to use for the image.  Default: <dirname>:<latest git hash/"latest">
 
+    --service
+
+        Service specified with a ``build`` argument to build the image for.
+
     .. code-block:: bash
 
         teststack build
         teststack build --tag blah:old
     """
+    if service:
+        tag = f'{ctx.obj.get("prefix")}{service}:{ctx.obj.get("commit", "latest")}'
+        directory = ctx.obj.get(f'services.{service}.build')
+
     try:
-        tempstat = os.stat(template_file)
+        tempstat = os.stat(os.path.join(directory, template_file))
     except FileNotFoundError:
         tempstat = None
 
     try:
-        dockerstat = os.stat(dockerfile)
+        dockerstat = os.stat(os.path.join(directory, dockerfile))
     except FileNotFoundError:
         dockerstat = None
 
