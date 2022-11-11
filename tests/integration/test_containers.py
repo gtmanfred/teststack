@@ -10,7 +10,7 @@ from teststack import cli
 
 def test_running_tests_in_containers(docker, runner, testapp_dir):
 
-    result = runner.invoke(cli, [f'--path={testapp_dir}', 'stop', 'render', 'build', 'run'])
+    result = runner.invoke(cli, [f'--path={testapp_dir}', 'stop', 'render', 'build', 'start', '-m', 'run'])
     assert result.exit_code == 0
     result = runner.invoke(cli, [f'--path={testapp_dir}', 'stop'])
     assert result.exit_code == 0
@@ -18,7 +18,7 @@ def test_running_tests_in_containers(docker, runner, testapp_dir):
 
 def test_running_tests(docker, runner, testapp_dir):
 
-    result = runner.invoke(cli, [f'--path={testapp_dir}', 'stop', 'render', 'build', 'start', '-n'])
+    result = runner.invoke(cli, [f'--path={testapp_dir}', 'stop', 'render', 'build', 'start', '-n', '-m'])
     assert result.exit_code == 0
     with pytest.raises(NotFound):
         docker.containers.get('testapp_tests')
