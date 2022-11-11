@@ -110,10 +110,10 @@ class Client:
             tty=True,
             socket=True,
         )
-        sock = getattr(sock, '_sock', sock)
 
         with read_from_stdin() as fd:
             if fd is not None:  # pragma: no cover
+                sock = getattr(sock, '_sock', sock)
                 BREAK = False
                 while not BREAK:
                     reads, _, _ = select.select([sock, fd], [], [], 0.0)

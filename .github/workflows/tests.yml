@@ -29,7 +29,7 @@ jobs:
         python -m pip install tox tox-gh-actions
 
     - name: Unit tests
-      run: tox -- tests/unit/ --junit-xml pytest.xml
+      run: tox -- --junit-xml pytest.xml
 
     - name: Codecov.io
       uses: codecov/codecov-action@v1.3.2
