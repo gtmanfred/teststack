@@ -7,7 +7,7 @@ from teststack import cli
 
 def test_env_with_containers_inside(runner, attrs, client):
     client.containers.get.return_value.attrs = attrs
-    
+
     result = runner.invoke(cli, ['env', '--inside'])
     assert result.exit_code == 0
     assert 'AWS_ACCESS_KEY_ID' in result.output

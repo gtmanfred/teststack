@@ -71,7 +71,6 @@ def testapp_dir(main_dir):
 @pytest.fixture()
 def client():
     context = docker_py.ContextAPI.get_current_context()
-    print(context.name)
     if context.name == 'default':  # pragma: no branch
         with patch('docker.from_env') as client:
             yield client.return_value

@@ -178,7 +178,6 @@ def test_container_run_step(runner, attrs, client):
     result = runner.invoke(cli, ['run', '--step=install'])
     assert client.containers.get.call_count == 31
     assert client.containers.run.called is False
-    print(result)
     assert result.exit_code == 0
     assert 'foobarbaz' in result.output
     assert 'Run Command: env' not in result.output
