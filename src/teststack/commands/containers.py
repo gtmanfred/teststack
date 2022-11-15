@@ -118,6 +118,14 @@ def start(ctx, no_tests, no_mount, imp, prefix):
             mount_cwd=not no_mount,
         )
 
+        if imp is True:
+            for step in ctx.obj.get('tests.import.setup', []):
+                client.run_command(
+                    container,
+                    step,
+                )
+
+
     return container
 
 

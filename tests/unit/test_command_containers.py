@@ -13,7 +13,7 @@ def test_render(runner, tag):
         result = runner.invoke(cli, ['render', f'--dockerfile={tmpfile.name}'])
         assert result.exit_code == 0
         with open(tmpfile.name, 'r') as fh_:
-            assert fh_.readline() == 'FROM docker.io/python:slim\n'
+            assert fh_.readline() == 'FROM docker.io/python:3.9\n'
             assert fh_.readline() == 'ENV PYTHON=True\n'
             assert fh_.readline() == 'WORKDIR /srv\n'
             assert fh_.readline() == '\n'
@@ -37,7 +37,7 @@ def test_render_isolated(runner):
         result = runner.invoke(cli, [f'--path={th_}', 'render'])
         assert result.exit_code == 0
         with open('Dockerfile', 'r') as fh_:
-            assert fh_.readline() == 'FROM docker.io/python:slim\n'
+            assert fh_.readline() == 'FROM docker.io/python:3.9\n'
             assert fh_.readline() == 'ENV PYTHON=True\n'
             assert fh_.readline() == 'WORKDIR /srv\n'
             assert not fh_.readline()
@@ -47,8 +47,9 @@ def test_container_start_no_tests(runner, attrs, client):
     client.containers.get.return_value.attrs = attrs
 
     result = runner.invoke(cli, ['start', '-n'])
-    assert client.containers.get.call_count == 16
-    assert client.containers.run.called is False
+    assert client.containers.get.call_count == 19
+    client.containers.run.assert_called_once()
+    assert client.containers.run.call_args.kwargs['name'] == "teststack.testapp_tests"
     assert result.exit_code == 0
 
 
@@ -67,7 +68,7 @@ def test_container_start_with_tests(runner, attrs, client):
     client.images.get.return_value.id = client.containers.get.return_value.image.id
 
     result = runner.invoke(cli, ['start'])
-    assert client.containers.get.call_count == 29
+    assert client.containers.get.call_count == 32
     assert client.containers.run.called is False
     assert result.exit_code == 0
 
@@ -76,7 +77,7 @@ def test_container_start_with_tests_old_image(runner, attrs, client):
     client.containers.get.return_value.attrs = attrs
 
     result = runner.invoke(cli, ['start'])
-    assert client.containers.get.call_count == 29
+    assert client.containers.get.call_count == 32
     assert client.containers.run.called is True
     assert client.containers.get.return_value.stop.called is True
     assert client.containers.get.return_value.wait.called is True
@@ -136,7 +137,7 @@ def test_container_start_with_tests_without_image(runner, attrs, client):
     client.images.get.side_effect = [image, ImageNotFound('image not found'), image, image, image]
 
     result = runner.invoke(cli, ['start'])
-    assert client.containers.get.call_count == 29
+    assert client.containers.get.call_count == 32
     assert client.containers.run.called is True
     assert client.images.get.call_count == 5
     assert result.exit_code == 0
@@ -155,7 +156,7 @@ def test_container_run(runner, attrs, client):
     }
 
     result = runner.invoke(cli, ['run'])
-    assert client.containers.get.call_count == 32
+    assert client.containers.get.call_count == 35
     assert client.containers.run.called is False
     assert result.exit_code == 0
     assert 'foobarbaz' in result.output
@@ -176,7 +177,7 @@ def test_container_run_step(runner, attrs, client):
     }
 
     result = runner.invoke(cli, ['run', '--step=install'])
-    assert client.containers.get.call_count == 31
+    assert client.containers.get.call_count == 34
     assert client.containers.run.called is False
     assert result.exit_code == 0
     assert 'foobarbaz' in result.output
