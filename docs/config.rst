@@ -37,7 +37,7 @@ Here are a few examples.
 .. code-block:: toml
 
     [tests]
-    min_version = "v0.4.0"
+    min_version = "v0.11.0"
     steps = {
       "install": "poetry install",
       "tests": "poetry run coverage run -m pytest -v --junitxml=junit.xml {posargs}",
@@ -47,14 +47,23 @@ Here are a few examples.
           "poetry run coverage html"
       ]
     }
+    import = {
+        "command": "poetry run flask run -h 0.0.0.0",
+        "setup": [
+            "poetry run alembic upgrade head"
+        ]
+    }
     environment = {
         "STACK": "local"
+    }
+    export = {
+        "TESTAPP_URL": "http://{HOST}:{POST;5000/tcp}/"
     }
 
 .. code-block:: toml
 
     [tests]
-    min_version = "v0.4.0"
+    min_version = "v0.11.0"
 
     [tests.steps]
     install = "poetry install"
@@ -65,10 +74,41 @@ Here are a few examples.
         "poetry run coverage html"
     ]
 
+    [tests.import]
+    command = "poetry run flask run -h 0.0.0.0"
+    setup = [
+        "poetry run alembic upgrade head",
+        "poetry run python -m scripts.seed_data"
+    ]
+
     [tests.environment]
     STACK = "local"
 
-You can include ``{posargs}`` in one of your steps, and teststack will inject
+    [tests.export]
+    TESTAPP_URL = "http://{HOST}:{POST;5000/tcp}/"
+
+tests.min_version
+-----------------
+
+.. code-block:: toml
+
+    [tests]
+    min_version = "v0.11.0"
+
+The minimum version of teststack that can be used to run this configuration.
+
+tests.steps
+-----------
+
+.. code-block:: toml
+
+    [tests.steps]
+    install = "pip install .[tests]"
+    tests = "pytest -vx --junit-xml=junit.xml {posargs}"
+
+A list of commands to execute (in order) for ``teststack run``.
+
+``{posargs}`` can be included in one of the steps, and teststack will inject
 unprocessed arguments to the ``run`` command to the test step.
 
 .. code-block:: bash
@@ -80,6 +120,42 @@ results in the following command being run for the tests step.
 .. code-block:: bash
 
     poetry run coverage run -m pytest -v --junitxml=junit.xml -k test_add_users test/unit/test_users.py
+
+tests.environment
+-----------------
+
+.. code-block:: toml
+
+    [tests.environment]
+    AWS_DEFAULT_REGION = "blah"
+
+Environment variables to inject into the tests container. This should not be
+secret data, it should just be fake data that is required to run the test suite.
+
+tests.ports
+-----------
+
+.. code-block:: toml
+
+    [tests.ports]
+    "5000/tcp" = ""
+
+This sets the ports that should be forwarded to the host, and also which ports
+should be included for exporting an environment variables.
+
+The protocol must be specified (tcp or udp).
+
+tests.export
+------------
+
+.. code-block:: toml
+
+    [tests.export]
+    TESTAPP_URL = "http://{HOST}:{PORT;5000/tcp}/"
+
+Exports are environment variables to add to test containers that import this
+service repository. It exposes the same magic variables as exports below in
+servives.
 
 Services
 ========
@@ -106,27 +182,85 @@ Example:
     [services.database.export]
     POSTGRESQL_DB_URL = "postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{HOST}:{PORT;5432/tcp}/{POSTGRES_DB}"
 
-Everything underneath ``services`` is dependent on what you have, but lets cover
-the above example.
+services.<name>
+---------------
 
-First you have the name of the service which is ``database`` and you can specify
-the ``image`` for that service.
+``image`` specifies the image to use for starting a service.
 
-Next you have the ports section, which is a set of key value pairs of ports to
-forward. You do need to specify a value for the assignment, but you can make it
-an empty string if you don't care which port it forwards too, which should be
-find as the ``env`` command should give you the variables that you need.
+``build`` can be used to specify building a docker image from the context of a directory.
 
-After that is the ``environment`` section, this is a list of key values that are
-injected into the service container when it starts up. In this case, those
-variables are used to setup the `postgres container image<https://hub.docker.com/_/postgres/>`_.
+.. code-block:: toml
 
-The last section is ``export``. These are the environment variables that will be
-exported by the ``env`` command so they can be set in the ``tests`` container,
-or set in your local environment for running tests against these containers. If
-you look closely, you will see the variables from the ``environment`` section
-can be used in format strings, as well as two special variables: ``HOST`` and
-``PORT;####/(tcp|udp)``. These special variables correspond to the ip address of
-the container and each of the ports you have elected to forward. They will be
-set to the internal network values, or the docker network values based on if you
-have passed the ``--inside`` flag to the ``env`` command.
+    [services.database]
+    build = "services/postgres"
+
+services.<name>.ports
+---------------------
+
+.. code-block:: toml
+
+    [services.database.ports]
+    "5432/tcp" = ""
+
+The ports section is a set of key value pairs of ports to forward. If no port to
+forward to is specified like in the example, a random unused port one is used.
+Not specifying a port to forward too is preferred, because those ports are are
+useable for exporting environment variables, so the can be programatically
+discovered.
+
+services.<name>.environment
+---------------------------
+
+.. code-block:: toml
+
+    [services.database.environment]
+    POSTGRES_USER = "fred"
+    POSTGRES_PASSWORD = "secret"
+    POSTGRES_DB = "tests"
+
+this is a list of key values that are injected into the service container when
+it starts up. In this case, those variables are used to setup the `postgres
+container image<https://hub.docker.com/_/postgres/>`_.
+
+services.<name>.exports
+-----------------------
+
+.. code-block:: toml
+
+    [services.database.export]
+    POSTGRESQL_DB_URL = "postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{HOST}:{PORT;5432/tcp}/{POSTGRES_DB}"
+
+The export section is used to specify environment variables that should be
+exported about the service. This makes it accessible programatically, the
+environment variables the app uses can be specified here to hook everything up
+together.
+
+All of the environment variables from ``service.<name>.environments`` are able
+to be used in a format string in this section, as well as the HOST and PORT
+environment variables. These special variables correspond to the ip address of
+the container and each of the ports that have been forwarded. They will be set
+to the internal network values, or the docker network values based on if the
+``--inside`` flag to the ``env`` command. The ``--inside`` argument is used to 
+collect the environment variables to add to the testing container.
+
+service.<name>.import
+---------------------
+
+Other repositories can also be imported as services.
+
+.. code-block:: toml
+
+    [service.testapp.import]
+    repo = "ssh://github.com/gtmanfred/testapp"
+    ref = "dev"
+
+This is all that needs to be specified to import an application. The rest of the
+settings are set on the other service repositories.
+
+``repo`` is a path or url that points to a directory with a ``teststack.toml`` file.
+``ref`` points to the reference, a commit, branch, or tag if the repo is a git
+repository.
+
+This will then start that other services environment and export the environment
+variables in the ``export`` block of its test container into the current
+environment.

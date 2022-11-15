@@ -14,9 +14,11 @@ report = [
 ]
 
 [tests.environment]
-TESTAPP_URL = "http://{HOST}:{PORT;5000/tcp}/"
 AWS_ACCESS_KEY_ID = "keyid"
 AWS_SECRET_ACCESS_KEY = "secret"
+
+[tests.export]
+TESTAPP_URL = "http://{HOST}:{PORT;5000/tcp}/"
 
 [services.database]
 image = "docker.io/postgres:12"

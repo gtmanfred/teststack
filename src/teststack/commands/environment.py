@@ -103,13 +103,13 @@ def import_env(ctx, no_export, inside, prefix):
     name = f'{prefix}{ctx.obj.get("project_name")}_tests'
     container_data = client.get_container_data(name, inside=inside)
     if container_data is not None:
-        for key, value in ctx.obj.get('tests.environment', {}).items():
+        for key, value in ctx.obj.get('tests.export', {}).items():
             envvars.append(
                 f'{"" if no_export else "export "}{key}={value}'.format_map(
                     container_data,
                 )
             )
     else:
-        for key, value in ctx.obj.get('tests.environment', {}).items():
+        for key, value in ctx.obj.get('tests.export', {}).items():
             envvars.append(f'{"" if no_export else "export "}{key}={value}')
     click.echo('\n'.join(envvars))
