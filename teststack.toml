@@ -2,7 +2,7 @@
 min_version = 'v0.9.0'
 
 [client]
-name = "docker"
+name = "podman"
 
 [tests.steps]
 env = "env"

@@ -27,12 +27,22 @@ except ImportError:  # pragma: no cover
 
 class DictConfig(dict):
     def get(self, key, default=None):
+        if isinstance(default, dict):
+            default = DictConfig(default)
         rep = self
         for level in key.split('.'):
             if level not in rep:
                 return default
             rep = rep[level]
+        if isinstance(rep, dict):
+            return DictConfig(rep)
         return rep
+
+    def merge(self, config, inside=None):
+        for key in config:
+            if isinstance(self.get(key), dict):
+                self.get(key).merge(config[key])
+            self[key] = config[key]
 
 
 @click.group(chain=True)
@@ -44,6 +54,13 @@ class DictConfig(dict):
     help='Location of teststack config.',
 )
 @click.option(
+    '--local-config',
+    '-l',
+    type=click.Path(),
+    default='teststack.local.toml',
+    help='Local config to overwrite data in teststack.toml',
+)
+@click.option(
     '--project-name',
     '-n',
     default=None,
@@ -51,9 +68,10 @@ class DictConfig(dict):
 )
 @click.option('--path', '-p', default=os.getcwd(), type=click.Path(exists=True), help='Directory to run teststack in.')
 @click.pass_context
-def cli(ctx, config, project_name, path):
+def cli(ctx, config, local_config, project_name, path):
     ctx.ensure_object(DictConfig)
     config = pathlib.Path(config)
+    local_config = pathlib.Path(local_config)
 
     @ctx.call_on_close
     def change_dir_to_original():
@@ -68,6 +86,11 @@ def cli(ctx, config, project_name, path):
             config = DictConfig(toml.load(fh_))
     else:
         config = DictConfig()
+
+    if local_config.exists():
+        with local_config.open('r') as fh_:
+            local_config = toml.load(fh_)
+        config.merge(local_config)
 
     min_version = Version(config.get('tests.min_version', 'v0.0.0').lstrip('v'))
     if min_version > Version(__version__):

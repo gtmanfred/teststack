@@ -5,9 +5,9 @@ Configuration
 The ``teststack.toml`` config file is located in each projects root directory,
 preferably managed by git.
 
-This file is managed by toml, so the end result is a dictionary, and you can
-represent the options however you like as long as they result in the same
-dictionary structure.
+There is also a ``teststack.local.toml`` file that can be configured so that
+users can overwrite stuff in the teststack.toml file without modifying it. This
+file should be included in the repos .gitignore file.
 
 Client
 ======
