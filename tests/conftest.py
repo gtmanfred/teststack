@@ -1,5 +1,6 @@
 import json
 import pathlib
+from unittest.mock import patch
 
 import click.testing
 import docker as docker_py
@@ -7,6 +8,7 @@ import docker as docker_py
 import pytest
 
 from teststack import import_commands
+from teststack.containers.docker import Client
 from teststack.git import get_tag
 
 
@@ -32,6 +34,9 @@ def attrs():
                 ],
                 '5672/tcp': [
                     {'HostPort': '12537'},
+                ],
+                '6379/tcp': [
+                    {'HostPort': '19999'},
                 ],
                 '12345/tcp': [],
             },
@@ -64,8 +69,19 @@ def testapp_dir(main_dir):
 
 
 @pytest.fixture()
+def client():
+    context = docker_py.ContextAPI.get_current_context()
+    if context.name == 'default':  # pragma: no branch
+        with patch('docker.from_env') as client:
+            yield client.return_value
+    else:
+        with patch('docker.DockerClient') as client:
+            yield client.return_value
+
+
+@pytest.fixture()
 def docker():
-    return docker_py.from_env()
+    return Client().client
 
 
 @pytest.fixture(autouse=True)

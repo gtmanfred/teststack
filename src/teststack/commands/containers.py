@@ -24,13 +24,16 @@ import click
 import jinja2
 
 from teststack import cli
+from teststack.git import get_path
 
 
 @cli.command()
 @click.option('--no-tests', '-n', is_flag=True, help='Don\'t start the tests container')
 @click.option('--no-mount', '-m', is_flag=True, help='Don\'t mount the current directory')
+@click.option('--imp', '-i', is_flag=True, help='Start container as an import')
+@click.option('--prefix', '-p', default='', help='Prefix to start a container name with')
 @click.pass_context
-def start(ctx, no_tests, no_mount):
+def start(ctx, no_tests, no_mount, imp, prefix):
     """
     Start services and tests containers.
 
@@ -55,15 +58,20 @@ def start(ctx, no_tests, no_mount):
         no_mount = not ctx.obj.get('tests.mount', True)
 
     for service, data in ctx.obj.get('services').items():
-        name = f'{ctx.obj.get("project_name")}_{service}'
+        if 'import' in data:
+            ctx.invoke(import_, **data['import'])
+            continue
+        name = f'{prefix}{ctx.obj.get("project_name")}_{service}'
         container = client.container_get(name)
         if 'build' in data:
             data['image'] = f'{ctx.obj.get("prefix")}{service}:{ctx.obj.get("commit", "latest")}'
-            ctx.invoke(
-                build,
-                directory=data['build'],
-                tag=data['image'],
-            )
+            image = client.image_get(data['image'])
+            if image is None:
+                ctx.invoke(
+                    build,
+                    directory=data['build'],
+                    tag=data['image'],
+                )
         if container is None:
             click.echo(f'Starting container: {name}')
             client.run(
@@ -80,13 +88,13 @@ def start(ctx, no_tests, no_mount):
     if no_tests is True:
         return
 
-    env = ctx.invoke(cli.get_command(ctx, 'env'), inside=True, no_export=True, quiet=True)
+    env = ctx.invoke(cli.get_command(ctx, 'env'), prefix=prefix, inside=True, no_export=True, quiet=True)
     env = dict(line.split('=') for line in env)
     image = client.image_get(ctx.obj['tag'])
     if image is None:
         image = client.image_get(ctx.invoke(build))
 
-    name = f'{ctx.obj.get("project_name")}_tests'
+    name = f'{prefix}{ctx.obj.get("project_name")}_tests'
 
     current_image_id = client.container_get_current_image(name)
     if current_image_id != image:
@@ -97,6 +105,8 @@ def start(ctx, no_tests, no_mount):
 
     if current_image_id is None:
         command = ctx.obj.get('tests.command', True)
+        if imp is True:
+            command = ctx.obj.get('tests.import.command', None)
 
         container = client.run(
             image=image,
@@ -108,14 +118,26 @@ def start(ctx, no_tests, no_mount):
             mount_cwd=not no_mount,
         )
 
+        if imp is True:
+            for step in ctx.obj.get('tests.import.setup', []):
+                client.run_command(
+                    container,
+                    step,
+                )
+
     return container
 
 
 @cli.command()
+@click.option('--prefix', '-p', default='', help='Prefix to start a container name with')
 @click.pass_context
-def stop(ctx):
+def stop(ctx, prefix):
     """
     Stop all containers
+
+    --prefix, -p
+
+        prefix for container names for imports
 
     .. code-block:: bash
 
@@ -123,13 +145,17 @@ def stop(ctx):
     """
     client = ctx.obj['client']
     project_name = ctx.obj["project_name"]
-    for service, _ in ctx.obj['services'].items():
-        name = f'{project_name}_{service}'
+    for service, data in ctx.obj['services'].items():
+        if 'import' in data:
+            ctx.invoke(import_, stop=True, **data['import'])
+            continue
+        name = f'{prefix}{project_name}_{service}'
         container = client.container_get(name)
         if container is None:
             continue
+        click.echo(f'Stopping container: {name}')
         client.end_container(container)
-    container = client.container_get(f'{project_name}_tests')
+    container = client.container_get(f'{prefix}{project_name}_tests')
     if container is None:
         return
     client.end_container(container)
@@ -224,8 +250,9 @@ def render(ctx, template_file, dockerfile):
 )
 @click.option('--template-file', type=click.Path(), default='Dockerfile.j2', help='template to render with jinja')
 @click.option('--directory', type=click.Path(), default='.', help='Directory to build in')
+@click.option('--service', help='Service to build image for')
 @click.pass_context
-def build(ctx, rebuild, tag, dockerfile, template_file, directory):
+def build(ctx, rebuild, tag, dockerfile, template_file, directory, service):
     """
     Build the docker image using the dockerfile.
 
@@ -251,18 +278,26 @@ def build(ctx, rebuild, tag, dockerfile, template_file, directory):
 
         Tag to use for the image.  Default: <dirname>:<latest git hash/"latest">
 
+    --service
+
+        Service specified with a ``build`` argument to build the image for.
+
     .. code-block:: bash
 
         teststack build
         teststack build --tag blah:old
     """
+    if service:
+        tag = f'{ctx.obj.get("prefix")}{service}:{ctx.obj.get("commit", "latest")}'
+        directory = ctx.obj.get(f'services.{service}.build')
+
     try:
-        tempstat = os.stat(template_file)
+        tempstat = os.stat(os.path.join(directory, template_file))
     except FileNotFoundError:
         tempstat = None
 
     try:
-        dockerstat = os.stat(dockerfile)
+        dockerstat = os.stat(os.path.join(directory, dockerfile))
     except FileNotFoundError:
         dockerstat = None
 
@@ -386,3 +421,58 @@ def status(ctx):
     container = client.get_container_data(name) or {}
     container.pop('HOST', None)
     click.echo('{:^16}|{:^36}|{:^16}'.format(client.status(name), name, str(container)))
+
+
+@cli.command(name='import')
+@click.option('--repo', '-r', required=True, help='Import and run another repo as a service')
+@click.option('--ref', '--tag', '-t', default=None, help='Revision to checkout on a remote repo')
+@click.option('--stop', is_flag=True, help='Stop the imported containers instead')
+@click.pass_context
+def import_(ctx, repo, ref, stop):
+    """
+    Load up another repo or directory as a dependency service
+
+    --repo, -r
+
+        Repository or path to directory for application. Urls have to be
+        cloneable with git. But paths can be whatever as long as they are on the
+        filesystem.
+
+    --ref, --tag, -t
+
+        Git reference to checked out after cloning. Only used if a remote
+        repository is specified
+
+    --stop
+
+        stop the containers in the imported environment instead
+
+    .. code-block:: bash
+
+        teststack import --repo ./path
+        teststack import --repo ssh://github.com/org/repo.git
+    """
+    path = get_path(repo, ref)
+    runner = click.testing.CliRunner()
+    if stop is True:
+        click.echo(f'Stopping import environment: {path}')
+        runner.invoke(
+            cli,
+            [
+                f'--path={path}',
+                'stop',
+                f'--prefix={ctx.obj.get("project_name")}.',
+            ],
+        )
+    else:
+        click.echo(f'Starting import environment: {path}')
+        runner.invoke(
+            cli,
+            [
+                f'--path={path}',
+                'start',
+                '-m',
+                '--imp',
+                f'--prefix={ctx.obj.get("project_name")}.',
+            ],
+        )

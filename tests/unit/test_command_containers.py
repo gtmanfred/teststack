@@ -13,7 +13,7 @@ def test_render(runner, tag):
         result = runner.invoke(cli, ['render', f'--dockerfile={tmpfile.name}'])
         assert result.exit_code == 0
         with open(tmpfile.name, 'r') as fh_:
-            assert fh_.readline() == 'FROM docker.io/python:slim\n'
+            assert fh_.readline() == 'FROM docker.io/python:3.9\n'
             assert fh_.readline() == 'ENV PYTHON=True\n'
             assert fh_.readline() == 'WORKDIR /srv\n'
             assert fh_.readline() == '\n'
@@ -37,50 +37,47 @@ def test_render_isolated(runner):
         result = runner.invoke(cli, [f'--path={th_}', 'render'])
         assert result.exit_code == 0
         with open('Dockerfile', 'r') as fh_:
-            assert fh_.readline() == 'FROM docker.io/python:slim\n'
+            assert fh_.readline() == 'FROM docker.io/python:3.9\n'
             assert fh_.readline() == 'ENV PYTHON=True\n'
             assert fh_.readline() == 'WORKDIR /srv\n'
             assert not fh_.readline()
 
 
-def test_container_start_no_tests(runner, attrs):
-    client = mock.MagicMock()
+def test_container_start_no_tests(runner, attrs, client):
     client.containers.get.return_value.attrs = attrs
-    with mock.patch('docker.from_env', return_value=client):
-        result = runner.invoke(cli, ['start', '-n'])
-    assert client.containers.get.call_count == 4
-    assert client.containers.run.called is False
+
+    result = runner.invoke(cli, ['start', '-n'])
+    assert client.containers.get.call_count == 19
+    client.containers.run.assert_called_once()
+    assert client.containers.run.call_args.kwargs['name'] == "teststack.testapp_tests"
     assert result.exit_code == 0
 
 
-def test_container_start_no_tests_not_started(runner, attrs):
-    client = mock.MagicMock()
+def test_container_start_no_tests_not_started(runner, attrs, client):
     client.containers.get.return_value.attrs = attrs
     client.containers.get.side_effect = NotFound('container not found')
-    with mock.patch('docker.from_env', return_value=client):
-        result = runner.invoke(cli, ['start', '-n'])
-    assert client.containers.get.call_count == 2
-    assert client.containers.run.call_count == 2
+
+    result = runner.invoke(cli, ['start', '-n'])
+    assert client.containers.get.call_count == 10
+    assert client.containers.run.call_count == 6
     assert result.exit_code == 0
 
 
-def test_container_start_with_tests(runner, attrs):
-    client = mock.MagicMock()
+def test_container_start_with_tests(runner, attrs, client):
     client.containers.get.return_value.attrs = attrs
     client.images.get.return_value.id = client.containers.get.return_value.image.id
-    with mock.patch('docker.from_env', return_value=client):
-        result = runner.invoke(cli, ['start'])
-    assert client.containers.get.call_count == 13
+
+    result = runner.invoke(cli, ['start'])
+    assert client.containers.get.call_count == 32
     assert client.containers.run.called is False
     assert result.exit_code == 0
 
 
-def test_container_start_with_tests_old_image(runner, attrs):
-    client = mock.MagicMock()
+def test_container_start_with_tests_old_image(runner, attrs, client):
     client.containers.get.return_value.attrs = attrs
-    with mock.patch('docker.from_env', return_value=client):
-        result = runner.invoke(cli, ['start'])
-    assert client.containers.get.call_count == 13
+
+    result = runner.invoke(cli, ['start'])
+    assert client.containers.get.call_count == 32
     assert client.containers.run.called is True
     assert client.containers.get.return_value.stop.called is True
     assert client.containers.get.return_value.wait.called is True
@@ -88,47 +85,41 @@ def test_container_start_with_tests_old_image(runner, attrs):
     assert result.exit_code == 0
 
 
-def test_container_start_with_tests_not_started(runner, attrs):
-    client = mock.MagicMock()
+def test_container_start_with_tests_not_started(runner, attrs, client):
     client.containers.get.return_value.attrs = attrs
     client.containers.get.side_effect = NotFound('container not found')
-    with mock.patch('docker.from_env', return_value=client):
-        result = runner.invoke(cli, ['start'])
+
+    result = runner.invoke(cli, ['start'])
+    assert client.containers.get.call_count == 17
+    assert client.containers.run.call_count == 7
+    assert result.exit_code == 0
+
+
+def test_container_stop(runner, attrs, client):
+    client.containers.get.return_value.attrs = attrs
+
+    with mock.patch('teststack.containers.docker.Client.end_container') as end_container:
+        result = runner.invoke(cli, ['stop'])
     assert client.containers.get.call_count == 7
-    assert client.containers.run.call_count == 3
+    assert end_container.call_count == 7
     assert result.exit_code == 0
 
 
-def test_container_stop(runner, attrs):
-    client = mock.MagicMock()
-    client.containers.get.return_value.attrs = attrs
-    with mock.patch('docker.from_env', return_value=client), mock.patch(
-        'teststack.containers.docker.Client.end_container'
-    ) as end_container:
-        result = runner.invoke(cli, ['stop'])
-    assert client.containers.get.call_count == 3
-    assert end_container.call_count == 3
-    assert result.exit_code == 0
-
-
-def test_container_stop_without_containers(runner, attrs):
-    client = mock.MagicMock()
+def test_container_stop_without_containers(runner, attrs, client):
     client.containers.get.return_value.attrs = attrs
     client.containers.get.side_effect = NotFound('container not found')
-    with mock.patch('docker.from_env', return_value=client), mock.patch(
-        'teststack.containers.docker.Client.end_container'
-    ) as end_container:
+
+    with mock.patch('teststack.containers.docker.Client.end_container') as end_container:
         result = runner.invoke(cli, ['stop'])
-    assert client.containers.get.call_count == 3
+    assert client.containers.get.call_count == 7
     assert end_container.called is False
     assert result.exit_code == 0
 
 
-def test_container_build(runner, build_output):
-    client = mock.MagicMock()
+def test_container_build(runner, build_output, client):
     client.api.build.return_value = build_output
-    with mock.patch('docker.from_env', return_value=client):
-        result = runner.invoke(cli, ['build', '--tag=blah'])
+
+    result = runner.invoke(cli, ['build', '--tag=blah'])
     client.api.build.assert_called_with(
         path='.',
         dockerfile='Dockerfile',
@@ -140,21 +131,19 @@ def test_container_build(runner, build_output):
     assert result.exit_code == 0
 
 
-def test_container_start_with_tests_without_image(runner, attrs):
-    client = mock.MagicMock()
+def test_container_start_with_tests_without_image(runner, attrs, client):
     client.containers.get.return_value.attrs = attrs
     image = mock.MagicMock()
-    client.images.get.side_effect = [ImageNotFound('image not found'), image, image, image]
-    with mock.patch('docker.from_env', return_value=client):
-        result = runner.invoke(cli, ['start'])
-    assert client.containers.get.call_count == 13
+    client.images.get.side_effect = [image, ImageNotFound('image not found'), image, image, image]
+
+    result = runner.invoke(cli, ['start'])
+    assert client.containers.get.call_count == 32
     assert client.containers.run.called is True
-    assert client.images.get.call_count == 4
+    assert client.images.get.call_count == 5
     assert result.exit_code == 0
 
 
-def test_container_run(runner, attrs):
-    client = mock.MagicMock()
+def test_container_run(runner, attrs, client):
     client.containers.get.return_value.attrs = attrs
     client.images.get.return_value.id = client.containers.get.return_value.image.id
     client.containers.get.return_value.client.api.exec_start.return_value = [
@@ -165,17 +154,16 @@ def test_container_run(runner, attrs):
     client.containers.get.return_value.client.api.exec_inspect.return_value = {
         'ExitCode': 0,
     }
-    with mock.patch('docker.from_env', return_value=client):
-        result = runner.invoke(cli, ['run'])
-    assert client.containers.get.call_count == 16
+
+    result = runner.invoke(cli, ['run'])
+    assert client.containers.get.call_count == 35
     assert client.containers.run.called is False
     assert result.exit_code == 0
     assert 'foobarbaz' in result.output
     assert 'Run Command: env' in result.output
 
 
-def test_container_run_step(runner, attrs):
-    client = mock.MagicMock()
+def test_container_run_step(runner, attrs, client):
     client.containers.get.return_value.attrs = attrs
     client.images.get.return_value.id = client.containers.get.return_value.image.id
     client.containers.get.return_value.client.api.exec_start.return_value = [
@@ -183,14 +171,27 @@ def test_container_run_step(runner, attrs):
         'bar',
         'baz',
     ]
+
     client.containers.get.return_value.client.api.exec_inspect.return_value = {
         'ExitCode': 0,
     }
-    with mock.patch('docker.from_env', return_value=client):
-        result = runner.invoke(cli, ['run', '--step=install'])
-    assert client.containers.get.call_count == 15
+
+    result = runner.invoke(cli, ['run', '--step=install'])
+    assert client.containers.get.call_count == 34
     assert client.containers.run.called is False
     assert result.exit_code == 0
     assert 'foobarbaz' in result.output
     assert 'Run Command: env' not in result.output
     assert 'Run Command: python -m pip install' in result.output
+
+
+def test_container_tag(runner):
+    with runner.isolated_filesystem() as fh_:
+        result = runner.invoke(cli, ['tag'])
+    assert result.stdout.startswith('teststack:')
+
+
+def test_container_status_notfound(runner):
+    with runner.isolated_filesystem() as fh_:
+        result = runner.invoke(cli, ['status'])
+    assert 'notfound' in result.stdout

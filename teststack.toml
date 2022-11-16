@@ -15,6 +15,9 @@ install = [
 AWS_ACCESS_KEY_ID = "keyid"
 AWS_SECRET_ACCESS_KEY = "secret"
 
+[services.testapp.import]
+repo = "tests/testapp"
+
 [services.database]
 image = "docker.io/postgres:12"
 
@@ -46,3 +49,12 @@ image = "docker.io/rabbitmq:3.8"
 
 [services.rabbit.export]
 BROKER_URL = "amqp://guest:guest@{HOST}:{PORT;5672/tcp}//"
+
+[services.cache]
+build = "tests/redis"
+
+[services.cache.ports]
+"6379/tcp" = ""
+
+[services.cache.export]
+REDIS_URL = "redis://{HOST}:{PORT;6379/tcp}/0"

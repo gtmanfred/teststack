@@ -6,3 +6,4 @@ Environment
     :members:
 
     .. autofunction:: env(ctx, no_export, inside, quiet)
+    .. autofunction:: import-env(ctx, no_export, inside, quiet)

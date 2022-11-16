@@ -1,6 +1,11 @@
 name: Tests
 
-on: [push, pull_request]
+on:
+  push:
+    branches:
+    - master
+    - main
+  pull_request:
 
 jobs:
   test:
@@ -8,7 +13,6 @@ jobs:
     strategy:
       matrix:
         python-version:
-        - 3.7
         - 3.8
         - 3.9
         - '3.10'
@@ -26,10 +30,10 @@ jobs:
     - name: Install Dependencies
       run: |
         python -m site
-        python -m pip install tox tox-gh-actions
+        python -m pip install tox tox-gh-actions poetry
 
     - name: Unit tests
-      run: tox -- tests/unit/ --junit-xml pytest.xml
+      run: tox -- --junit-xml pytest.xml
 
     - name: Codecov.io
       uses: codecov/codecov-action@v1.3.2
