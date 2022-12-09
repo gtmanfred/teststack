@@ -13,6 +13,10 @@ report = [
     "poetry run coverage html"
 ]
 
+[tests.buildargs]
+PYTHON_VERSION = "3.10"
+REGISTRY = "docker.io"
+
 [tests.environment]
 AWS_ACCESS_KEY_ID = "keyid"
 AWS_SECRET_ACCESS_KEY = "secret"

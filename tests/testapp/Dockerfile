@@ -1,4 +1,6 @@
-FROM python:{{'3.9-slim'}}
+ARG REGISTRY
+ARG PYTHON_VERSION=3.9
+FROM ${REGISTRY}/python:${PYTHON_VERSION}-slim
 ENV PYTHON=True
 WORKDIR /srv
 

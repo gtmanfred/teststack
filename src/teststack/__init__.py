@@ -36,6 +36,8 @@ class DictConfig(dict):
             rep = rep[level]
         if isinstance(rep, dict):
             return DictConfig(rep)
+        if isinstance(rep, str):
+            return rep.format_map(os.environ)
         return rep
 
     def merge(self, config, inside=None):
