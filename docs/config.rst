@@ -10,7 +10,7 @@ users can overwrite stuff in the teststack.toml file without modifying it. This
 file should be included in the repos .gitignore file.
 
 Environment Variables
----------------------
+=====================
 
 Environment Variables can be used inside of the configuration file as python
 format strings.
