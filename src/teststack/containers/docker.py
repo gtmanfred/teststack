@@ -89,7 +89,6 @@ class Client:
         else:
             src_path, src = src, os.path.basename(src)
 
-        print('here')
         try:
             data, _ = container.get_archive(src_path, chunk_size=1)
         except docker.errors.NotFound:

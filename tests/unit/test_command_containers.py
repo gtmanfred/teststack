@@ -1,6 +1,7 @@
 import os
 import tempfile
 from unittest import mock
+from xml.etree.ElementTree import ElementTree
 
 from docker.errors import ImageNotFound
 from docker.errors import NotFound
@@ -232,6 +233,22 @@ def test_container_status_notfound(runner):
 
 def test_container_copy_raises(runner, client):
     client.containers.get.return_value.get_archive.side_effect = NotFound(message='notfound')
+    client.containers.get.return_value.attrs = {'Config': {'WorkingDir': '/srv'}}
 
     result = runner.invoke(cli, ['copy'])
     assert result.exit_code == 12
+
+
+def test_container_copy(runner, client, test_files_dir):
+    archive = test_files_dir / 'testapp.tar'
+    with archive.open('rb') as fh_:
+        data = fh_.read()
+    client.containers.get.return_value.get_archive.return_value = ([data], {})
+    client.containers.get.return_value.attrs = {'Config': {'WorkingDir': '/srv'}}
+
+    result = runner.invoke(cli, ['copy'])
+    assert result.exit_code == 0
+    assert os.path.exists('garbage.xml')
+    et = ElementTree()
+    et.parse(source=f'garbage.xml')
+    assert et.find('testsuite')

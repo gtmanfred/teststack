@@ -1,7 +1,7 @@
 [tests]
 min_version = 'v0.9.0'
 copy = [
-    "/srv/pytest.xml",
+    "garbage.xml",
 ]
 
 [client]
@@ -12,7 +12,7 @@ env = "env"
 install = [
     "python -m pip install setuptools",
 ]
-touch = "cp /etc/hosts pytest.xml"
+touch = "cp /etc/hosts garbage.xml"
 
 [tests.environment]
 AWS_ACCESS_KEY_ID = "keyid"

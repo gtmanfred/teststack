@@ -69,6 +69,11 @@ def testapp_dir(main_dir):
 
 
 @pytest.fixture()
+def test_files_dir(main_dir):
+    return main_dir / 'tests' / 'files'
+
+
+@pytest.fixture()
 def client():
     context = docker_py.ContextAPI.get_current_context()
     if context.name == 'default':  # pragma: no branch
