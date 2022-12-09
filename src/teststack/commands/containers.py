@@ -71,6 +71,7 @@ def start(ctx, no_tests, no_mount, imp, prefix):
                     build,
                     directory=data['build'],
                     tag=data['image'],
+                    service=service,
                 )
         if container is None:
             click.echo(f'Starting container: {name}')
