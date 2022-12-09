@@ -288,8 +288,12 @@ def build(ctx, rebuild, tag, dockerfile, template_file, directory, service):
         teststack build --tag blah:old
     """
     if service:
-        tag = f'{ctx.obj.get("prefix")}{service}:{ctx.obj.get("commit", "latest")}'
+        if tag is None:
+            tag = f'{ctx.obj.get("prefix")}{service}:{ctx.obj.get("commit", "latest")}'
         directory = ctx.obj.get(f'services.{service}.build')
+        buildargs = ctx.obj.get(f'services.{service}.buildargs')
+    else:
+        buildargs = ctx.obj.get(f'tests.buildargs')
 
     try:
         tempstat = os.stat(os.path.join(directory, template_file))
@@ -311,7 +315,7 @@ def build(ctx, rebuild, tag, dockerfile, template_file, directory, service):
         tag = ctx.obj['tag']
 
     click.echo(f'Build Image: {tag}')
-    client.build(dockerfile, tag, rebuild, directory=directory)
+    client.build(dockerfile, tag, rebuild, directory=directory, buildargs=buildargs)
     image = client.image_get(tag)
     if image is None:
         click.echo(click.style('Failed to build image!', fg='red'))

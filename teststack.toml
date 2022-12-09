@@ -58,3 +58,6 @@ build = "tests/redis"
 
 [services.cache.export]
 REDIS_URL = "redis://{HOST}:{PORT;6379/tcp}/0"
+
+[services.cache.buildargs]
+REDIS_VERSION = "latest"

@@ -131,9 +131,15 @@ class Client:
 
         return container.client.api.exec_inspect(exec_id)['ExitCode']
 
-    def build(self, dockerfile, tag, rebuild, directory='.'):
+    def build(self, dockerfile, tag, rebuild, directory='.', buildargs=None):
         for data in self.client.api.build(
-            path=directory, dockerfile=dockerfile, tag=tag, nocache=rebuild, decode=True, rm=True
+            path=directory,
+            dockerfile=dockerfile,
+            tag=tag,
+            nocache=rebuild,
+            decode=True,
+            rm=True,
+            buildargs=buildargs or {},
         ):
             if 'stream' in data:
                 click.echo(data['stream'], nl=False)

@@ -9,6 +9,20 @@ There is also a ``teststack.local.toml`` file that can be configured so that
 users can overwrite stuff in the teststack.toml file without modifying it. This
 file should be included in the repos .gitignore file.
 
+Environment Variables
+---------------------
+
+Environment Variables can be used inside of the configuration file as python
+format strings.
+
+The following will inject the ``$DOCKER_REPO`` environment variable into the configuration at
+access time.
+
+.. code-block::
+
+    [tests.buildargs]
+    REGISTRY = "{DOCKER_REPO}"
+
 Client
 ======
 
@@ -156,6 +170,22 @@ tests.export
 Exports are environment variables to add to test containers that import this
 service repository. It exposes the same magic variables as exports below in
 servives.
+
+tests.buildargs
+---------------
+
+These arguments are passed into a Dockerfile during the build step. They can be
+used to as arguments for templating a Dockerfile instead of jinja2.
+
+.. code-block:: toml
+
+    [tests.buildargs]
+    REGISTRY = "https://ecr.io/1293485/"
+
+.. code-block:: Dockerfile
+
+    ARG REGISTRY
+    FROM ${REGISTRY}/nodejs:latest
 
 Services
 ========

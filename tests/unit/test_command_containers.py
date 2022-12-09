@@ -127,6 +127,39 @@ def test_container_build(runner, build_output, client):
         nocache=False,
         rm=True,
         decode=True,
+        buildargs={},
+    )
+    assert result.exit_code == 0
+
+
+def test_container_build_service(runner, build_output, client, tag):
+    client.api.build.return_value = build_output
+
+    result = runner.invoke(cli, ['build', '--service=cache'])
+    client.api.build.assert_called_with(
+        path='tests/redis',
+        dockerfile='Dockerfile',
+        tag=f'cache:{tag["commit"]}',
+        nocache=False,
+        rm=True,
+        decode=True,
+        buildargs={"REDIS_VERSION": "latest"},
+    )
+    assert result.exit_code == 0
+
+
+def test_container_build_service_with_tag(runner, build_output, client):
+    client.api.build.return_value = build_output
+
+    result = runner.invoke(cli, ['build', '--service=cache', '--tag=blah'])
+    client.api.build.assert_called_with(
+        path='tests/redis',
+        dockerfile='Dockerfile',
+        tag=f'blah',
+        nocache=False,
+        rm=True,
+        decode=True,
+        buildargs={"REDIS_VERSION": "latest"},
     )
     assert result.exit_code == 0
 
