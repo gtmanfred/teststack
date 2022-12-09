@@ -111,6 +111,23 @@ tests.min_version
 
 The minimum version of teststack that can be used to run this configuration.
 
+tests.copy
+----------
+
+This is a list of files to copy out of the tests container when ``teststack
+copy`` is run.
+
+.. code-block:: toml
+
+    [tests]
+    copy = [
+        "junit.xml",
+        "coverage.xml"
+    ]
+
+This is only specifically useful if the current working directory is not mounted
+to the container.
+
 tests.steps
 -----------
 

@@ -1,6 +1,7 @@
 import os
 import subprocess
 from unittest import mock
+from xml.etree.ElementTree import ElementTree
 
 import pytest
 from docker.errors import NotFound
@@ -10,8 +11,14 @@ from teststack import cli
 
 def test_running_tests_in_containers(docker, runner, testapp_dir):
 
-    result = runner.invoke(cli, [f'--path={testapp_dir}', 'stop', 'build', 'start', '-m', 'run'])
+    result = runner.invoke(cli, [f'--path={testapp_dir}', 'stop', 'build', 'start', '-n', '-m', 'run'])
     assert result.exit_code == 0
+    result = runner.invoke(cli, [f'--path={testapp_dir}', 'copy'])
+    assert result.exit_code == 0
+    assert os.path.exists(f'{testapp_dir}/pytest.xml')
+    et = ElementTree()
+    et.parse(source=f'{testapp_dir}/pytest.xml')
+    assert et.find('testsuite')
     result = runner.invoke(cli, [f'--path={testapp_dir}', 'stop'])
     assert result.exit_code == 0
 

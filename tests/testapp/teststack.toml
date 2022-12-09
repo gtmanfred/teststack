@@ -1,3 +1,8 @@
+[tests]
+copy = [
+    "pytest.xml",
+]
+
 [tests.ports]
 "5000/tcp" = ""
 
@@ -6,7 +11,7 @@ command = "poetry run flask run -h 0.0.0.0"
 
 [tests.steps]
 install = "poetry install"
-test = "poetry run coverage run -m pytest -v {posargs}"
+test = "poetry run coverage run -m pytest -v {posargs} --junit-xml=pytest.xml"
 report = [
     "poetry run coverage report",
     "poetry run coverage xml",

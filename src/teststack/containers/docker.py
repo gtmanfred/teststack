@@ -1,8 +1,9 @@
-import json
+import io
 import os
 import select
 import socket
 import sys
+import tarfile
 
 import click
 import docker.errors
@@ -78,6 +79,24 @@ class Client:
             environment=environment or {},
             volumes=volumes,
         ).id
+
+    def cp(self, name, src):
+        container = self.client.containers.get(name)
+
+        if not src.startswith('/'):
+            workdir = container.attrs['Config']['WorkingDir']
+            src_path = '/'.join([workdir.rstrip('/'), src])
+        else:
+            src_path, src = src, os.path.basename(src)
+
+        print('here')
+        try:
+            data, _ = container.get_archive(src_path, chunk_size=1)
+        except docker.errors.NotFound:
+            return False
+        archive = tarfile.TarFile(fileobj=io.BytesIO(b''.join(data)))
+        archive.extract(src)
+        return True
 
     def start(self, name):
         self.client.containers.get(name).start()

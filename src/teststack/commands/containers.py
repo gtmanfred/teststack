@@ -481,3 +481,18 @@ def import_(ctx, repo, ref, stop):
                 f'--prefix={ctx.obj.get("project_name")}.',
             ],
         )
+
+
+@cli.command(name='copy')
+@click.pass_context
+def copy_(ctx):
+    client = ctx.obj['client']
+    name = f'{ctx.obj.get("project_name")}_tests'
+    exit_code = 0
+    for src in ctx.obj.get('tests.copy'):
+        result = client.cp(name, src)
+        if result is False:
+            click.echo(click.style(f'Failed to retrieve {src}!', fg='red'))
+            exit_code = 12
+    if exit_code:
+        sys.exit(exit_code)

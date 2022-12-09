@@ -210,7 +210,7 @@ def test_container_run_step(runner, attrs, client):
     }
 
     result = runner.invoke(cli, ['run', '--step=install'])
-    assert client.containers.get.call_count == 34
+    assert client.containers.get.call_count == 33
     assert client.containers.run.called is False
     assert result.exit_code == 0
     assert 'foobarbaz' in result.output
@@ -228,3 +228,10 @@ def test_container_status_notfound(runner):
     with runner.isolated_filesystem() as fh_:
         result = runner.invoke(cli, ['status'])
     assert 'notfound' in result.stdout
+
+
+def test_container_copy_raises(runner, client):
+    client.containers.get.return_value.get_archive.side_effect = NotFound(message='notfound')
+
+    result = runner.invoke(cli, ['copy'])
+    assert result.exit_code == 12
