@@ -37,7 +37,10 @@ class DictConfig(dict):
         if isinstance(rep, dict):
             return DictConfig(rep)
         if isinstance(rep, str):
-            return rep.format_map(os.environ)
+            try:
+                return rep.format_map(os.environ)
+            except KeyError:
+                pass
         return rep
 
     def merge(self, config, inside=None):
