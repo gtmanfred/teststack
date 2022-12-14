@@ -332,7 +332,8 @@ def build(ctx, rebuild, tag, dockerfile, template_file, directory, service):
 
 @cli.command()
 @click.pass_context
-def exec(ctx):  # pragma: no cover
+@click.option('--user', '-u', default=None, nargs=1, type=click.STRING, help='User to exec to the container as')
+def exec(ctx, user):  # pragma: no cover
     """
     Exec into the current tests container.
 
@@ -341,7 +342,7 @@ def exec(ctx):  # pragma: no cover
         teststack exec
     """
     container = ctx.invoke(start)
-    ctx.obj['client'].exec(container)
+    ctx.obj['client'].exec(container, user=user)
 
 
 @cli.command()
