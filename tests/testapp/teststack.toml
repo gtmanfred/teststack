@@ -10,7 +10,7 @@ copy = [
 command = "poetry run flask run -h 0.0.0.0"
 
 [tests.steps]
-install = "poetry install"
+install = "poetry install --no-ansi"
 test = "poetry run coverage run -m pytest -v {posargs} --junit-xml=pytest.xml"
 report = [
     "poetry run coverage report",

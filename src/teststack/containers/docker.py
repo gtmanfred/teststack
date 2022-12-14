@@ -43,6 +43,18 @@ class Client:
             return self.client.containers.get(container).image.id
         return None
 
+    def network_get(self, name):
+        networks = self.client.networks.list(names=[name])
+        if not networks:
+            return None
+        return networks[0]
+
+    def network_create(self, name):
+        self.client.networks.create(name, driver="bridge")
+
+    def network_prune(self):
+        self.client.networks.prune()
+
     def run(
         self,
         name,
@@ -54,7 +66,13 @@ class Client:
         user=None,
         volumes=None,
         mount_cwd=False,
+        network='bridge',
+        service='tests',
     ):
+        networkobj = self.network_get(network)
+        if networkobj is None:
+            self.network_create(network)
+
         if mount_cwd is True:
             volumes = volumes or {}
             volumes.update(
@@ -65,6 +83,7 @@ class Client:
                     },
                 }
             )
+
         if command is True:  # pragma: no branch
             command = "sh -c 'trap \"trap - TERM; kill -s TERM -- -$$\" TERM; tail -f /dev/null & wait'"
 
@@ -78,6 +97,8 @@ class Client:
             command=command,
             environment=environment or {},
             volumes=volumes,
+            network=network,
+            hostname=service,
         ).id
 
     def cp(self, name, src):
@@ -146,7 +167,6 @@ class Client:
             else:
                 for line in sock:
                     click.echo(line, nl=False)
-
         return container.client.api.exec_inspect(exec_id)['ExitCode']
 
     def build(self, dockerfile, tag, rebuild, directory='.', buildargs=None):
@@ -162,14 +182,14 @@ class Client:
             if 'stream' in data:
                 click.echo(data['stream'], nl=False)
 
-    def get_container_data(self, name, inside=False):
+    def get_container_data(self, name, network, inside=False):
         data = {}
         try:
             container = self.client.containers.get(name)
         except docker.errors.NotFound:
             return None
         self.start(name)
-        data['HOST'] = container.attrs['NetworkSettings']['IPAddress'] if inside else 'localhost'
+        data['HOST'] = container.attrs['NetworkSettings']['Networks'][network]['IPAddress'] if inside else 'localhost'
         for port, port_data in container.attrs['NetworkSettings']['Ports'].items():
             if inside:
                 data[f'PORT;{port}'] = port.split('/')[0]

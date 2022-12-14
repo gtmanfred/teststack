@@ -6,16 +6,16 @@ authors = ["Daniel Wallace <daniel@gtmanfred.com>"]
 license = "APACHE-2.0"
 
 [tool.poetry.dependencies]
-python = "^3.6"
+python = "^3.8"
 Flask-SQLAlchemy = "^2.5.1"
 figenv = "^1.0.1"
 SQLAlchemy = {extras = ["postgresql_psycopg2binary"], version = "^1.4.22"}
-Flask-Caching = "^1.10.1"
+Flask-Caching = "^2.0.1"
 redis = "^3.5.3"
 
-[tool.poetry.dev-dependencies]
-pytest = "^6.2.4"
-coverage = {extras = ["toml"], version = "^5.5"}
+[tool.poetry.group.dev.dependencies]
+coverage = "^6.5.0"
+pytest = "^7.2.0"
 
 [tool.coverage.run]
 branch = true

@@ -12,6 +12,7 @@ from teststack import cli
 def test_running_tests_in_containers(docker, runner, testapp_dir):
 
     result = runner.invoke(cli, [f'--path={testapp_dir}', 'stop', 'build', 'start', '-n', '-m', 'run'])
+    print(result.stdout)
     assert result.exit_code == 0
     result = runner.invoke(cli, [f'--path={testapp_dir}', 'stop'])
     assert result.exit_code == 0

@@ -27,7 +27,6 @@ def tag():
 def attrs():
     return {
         'NetworkSettings': {
-            'IPAddress': 'fakeaddress',
             'Ports': {
                 '5432/tcp': [
                     {'HostPort': '12345'},
@@ -39,6 +38,11 @@ def attrs():
                     {'HostPort': '19999'},
                 ],
                 '12345/tcp': [],
+            },
+            'Networks': {
+                'teststack': {
+                    'IPAddress': 'fakeaddress',
+                },
             },
         },
     }

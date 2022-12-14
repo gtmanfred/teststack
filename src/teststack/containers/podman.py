@@ -111,6 +111,7 @@ class Client:
         user=None,
         volumes=None,
         mount_cwd=False,
+        network=None,
     ):
         mounts = volumes or []
         if mount_cwd is True:
@@ -184,7 +185,7 @@ class Client:
         )
         return image.id
 
-    def get_container_data(self, name, inside=False):
+    def get_container_data(self, name, network, inside=False):
         data = {}
         try:
             container = self.client.containers.get(name)

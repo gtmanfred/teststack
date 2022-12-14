@@ -82,6 +82,8 @@ def start(ctx, no_tests, no_mount, imp, prefix):
                 command=data.get('command', None),
                 environment=data.get('environment', {}),
                 mount_cwd=False,
+                network=ctx.obj['project_name'],
+                service=service,
             )
         else:
             client.start(name=name)
@@ -117,6 +119,7 @@ def start(ctx, no_tests, no_mount, imp, prefix):
             command=command,
             ports=ctx.obj.get('tests.ports', {}),
             mount_cwd=not no_mount,
+            network=ctx.obj['project_name'],
         )
 
         if imp is True:
@@ -160,6 +163,8 @@ def stop(ctx, prefix):
     if container is None:
         return
     client.end_container(container)
+    if hasattr(client, 'network_prune'):
+        client.network_prune()
 
 
 @cli.command()
@@ -419,7 +424,7 @@ def status(ctx):
     click.echo('{:_^16}|{:_^36}|{:_^16}'.format('status', 'name', 'data'))
     for service, data in ctx.obj['services'].items():
         name = f'{ctx.obj["project_name"]}_{service}'
-        container = client.get_container_data(name) or {}
+        container = client.get_container_data(name, network=ctx.obj['project_name']) or {}
         container.pop('HOST', None)
         click.echo('{:^16}|{:^36}|{:^16}'.format(client.status(name), name, str(container)))
     name = f'{ctx.obj["project_name"]}_tests'

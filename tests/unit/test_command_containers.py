@@ -48,9 +48,8 @@ def test_container_start_no_tests(runner, attrs, client):
     client.containers.get.return_value.attrs = attrs
 
     result = runner.invoke(cli, ['start', '-n'])
-    assert client.containers.get.call_count == 19
-    client.containers.run.assert_called_once()
-    assert client.containers.run.call_args.kwargs['name'] == "teststack.testapp_tests"
+    assert client.containers.get.call_count == 12
+    assert client.containers.run.called is False
     assert result.exit_code == 0
 
 
@@ -69,7 +68,7 @@ def test_container_start_with_tests(runner, attrs, client):
     client.images.get.return_value.id = client.containers.get.return_value.image.id
 
     result = runner.invoke(cli, ['start'])
-    assert client.containers.get.call_count == 32
+    assert client.containers.get.call_count == 25
     assert client.containers.run.called is False
     assert result.exit_code == 0
 
@@ -78,7 +77,7 @@ def test_container_start_with_tests_old_image(runner, attrs, client):
     client.containers.get.return_value.attrs = attrs
 
     result = runner.invoke(cli, ['start'])
-    assert client.containers.get.call_count == 32
+    assert client.containers.get.call_count == 25
     assert client.containers.run.called is True
     assert client.containers.get.return_value.stop.called is True
     assert client.containers.get.return_value.wait.called is True
@@ -171,7 +170,7 @@ def test_container_start_with_tests_without_image(runner, attrs, client):
     client.images.get.side_effect = [image, ImageNotFound('image not found'), image, image, image]
 
     result = runner.invoke(cli, ['start'])
-    assert client.containers.get.call_count == 32
+    assert client.containers.get.call_count == 25
     assert client.containers.run.called is True
     assert client.images.get.call_count == 5
     assert result.exit_code == 0
@@ -190,7 +189,7 @@ def test_container_run(runner, attrs, client):
     }
 
     result = runner.invoke(cli, ['run'])
-    assert client.containers.get.call_count == 35
+    assert client.containers.get.call_count == 28
     assert client.containers.run.called is False
     assert result.exit_code == 0
     assert 'foobarbaz' in result.output
@@ -211,7 +210,7 @@ def test_container_run_step(runner, attrs, client):
     }
 
     result = runner.invoke(cli, ['run', '--step=install'])
-    assert client.containers.get.call_count == 33
+    assert client.containers.get.call_count == 26
     assert client.containers.run.called is False
     assert result.exit_code == 0
     assert 'foobarbaz' in result.output

@@ -59,7 +59,7 @@ def env(ctx, no_export, inside, quiet, prefix):
             envvars.extend([line for line in result.stdout.strip('\n').split('\n') if line])
             continue
         name = f'{prefix}{ctx.obj.get("project_name")}_{service}'
-        container_data = client.get_container_data(name, inside=inside)
+        container_data = client.get_container_data(name, network=ctx.obj['project_name'], inside=inside)
         if container_data is None:
             continue
         container_data.update(data.get('environment', {}).copy())
@@ -70,7 +70,7 @@ def env(ctx, no_export, inside, quiet, prefix):
                 )
             )
     name = f'{ctx.obj.get("project_name")}_tests'
-    container_data = client.get_container_data(name, inside=inside)
+    container_data = client.get_container_data(name, network=ctx.obj['project_name'], inside=inside)
     if container_data is not None:
         for key, value in ctx.obj.get('tests.environment', {}).items():
             envvars.append(
@@ -101,7 +101,7 @@ def import_env(ctx, no_export, inside, prefix):
     envvars = []
     client = ctx.obj['client']
     name = f'{prefix}{ctx.obj.get("project_name")}_tests'
-    container_data = client.get_container_data(name, inside=inside)
+    container_data = client.get_container_data(name, network=ctx.obj['project_name'], inside=inside)
     if container_data is not None:
         for key, value in ctx.obj.get('tests.export', {}).items():
             envvars.append(

@@ -7,4 +7,4 @@ WORKDIR /srv
 RUN python -m pip install poetry
 
 COPY ./ .
-RUN poetry install --no-dev
+RUN poetry install --only main
