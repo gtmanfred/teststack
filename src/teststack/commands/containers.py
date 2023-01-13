@@ -351,6 +351,94 @@ def tag(ctx):
     click.echo(ctx.obj['tag'])
 
 
+def _process_steps(steps):
+    commands = {}
+    for name, command in steps.items():
+        cmd = {'user': None}
+        if isinstance(command, dict):
+            cmd.update(command)
+            if 'requires' in cmd:
+                for require in cmd['requires']:
+                    commands.setdefault(require, {}).setdefault('required_by', set()).add(name)
+        else:
+            cmd.update({'command': command})
+        commands.setdefault(name, {}).update(cmd)
+    return commands
+
+
+def _run(command, user, ctx):
+    if isinstance(command, str):
+        command = [command]
+    exit_code = 0
+    for cmd in command:
+        exit_code += ctx['client'].run_command(
+            ctx['container'],
+            cmd.format(posargs=' '.join(ctx['posargs'])),
+            user=user,
+        )
+    return exit_code
+
+
+def _do_check(command, ctx):
+    if 'check_exit_code' in command:
+        return command['check_exit_code']
+
+    if 'required_by' in command:
+        exit_code = 1
+        for required_by in command['required_by']:
+            exit_code = _do_check(ctx['commands'][required_by], ctx)
+        if not exit_code:
+            return 0
+
+    if 'check' in command:
+        command['check_exit_code'] = _run(command['check'], command['user'], ctx)
+        return command['check_exit_code']
+    return 1
+
+
+def _run_command(command, ctx):
+    if 'exit_code' in command:
+        return command['exit_code']
+
+    if 'check' in command:
+        command['check_exit_code'] = result = _do_check(command, ctx)
+        if not result:
+            return 0
+
+    if 'required_by' in command:
+        required_by_check = False
+        for required_by in command['required_by']:
+            cmd = ctx['commands'][required_by]
+            if 'exit_code' in cmd:
+                continue
+            exit_code = _do_check(cmd, ctx)
+            if exit_code == 0:
+                continue
+            required_by_check = True
+            break
+
+        if required_by_check is False:
+            return 0
+
+    if 'requires' in command:
+        requires_exit_code = 0
+        for require in command['requires']:
+            exit_code = _run_command(ctx['commands'][require], ctx)
+            ctx['commands'][require]['exit_code'] = exit_code
+            requires_exit_code += exit_code
+
+        if requires_exit_code:
+            return requires_exit_code
+
+    return _run(command['command'], command['user'], ctx)
+
+
+def _run_commands(ctx):
+    for command in ctx['commands'].values():
+        command['exit_code'] = _run_command(command, ctx)
+    return sum([result['exit_code'] for result in ctx['commands'].values()])
+
+
 @cli.command()
 @click.option('--step', '-s', help='Which step to run')
 @click.argument('posargs', nargs=-1, type=click.UNPROCESSED)
@@ -374,39 +462,18 @@ def run(ctx, step, posargs):
         teststack run --step tests -- -k test_add_user tests/unit/test_users.py
     """
     container = ctx.invoke(start)
-    client = ctx.obj['client']
 
     steps = ctx.obj['tests'].get('steps', {})
     if step:
-        commands = [steps.get(step, '{posargs}')]
-    else:
-        commands = steps.values()
+        stepobj = steps.get(step, '{posargs}')
+        new_steps = {step: stepobj}
+        if 'requires' in stepobj:
+            new_steps.update({s: steps[s] for s in stepobj['requires']})
+        steps = new_steps
     exit_code = 0
-    for command in commands:
-        user = None
-        if isinstance(command, list):
-            for cmd in command:
-                if isinstance(cmd, dict):
-                    cmd, user = cmd['command'], cmd.get('user')
-                ret = client.run_command(
-                    container,
-                    cmd.format(posargs=' '.join(posargs)),
-                    user=user,
-                )
-                if ret:
-                    exit_code = ret
-        elif isinstance(command, dict):
-            cmd, user = command['command'], command['user']
-
-            ret = client.run_command(
-                container,
-                cmd.format(posargs=' '.join(posargs)),
-                user=user,
-            )
-        else:
-            ret = client.run_command(container, command.format(posargs=' '.join(posargs)))
-        if ret:
-            exit_code = ret
+    commands = _process_steps(steps)
+    runctx = {'commands': commands, 'container': container, 'posargs': posargs, 'client': ctx.obj['client']}
+    exit_code = _run_commands(runctx)
     if exit_code:
         sys.exit(exit_code)
 
