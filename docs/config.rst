@@ -152,6 +152,56 @@ results in the following command being run for the tests step.
 
     poetry run coverage run -m pytest -v --junitxml=junit.xml -k test_add_users test/unit/test_users.py
 
+requires
+~~~~~~~~
+
+Requires is used to specify if another step must be run first before running
+this step. In the below example, the install command will be run before the
+tests command.
+
+.. code-block:: toml
+
+    [tests.steps]
+    install = "pip install .[tests]"
+
+    [tests.steps.tests]
+    command = "coverage run -m pytest -v"
+    requires = "install"
+
+check
+~~~~~
+
+Check is used to determine if a command needs to be run. It also supersedes
+requires. If a step is required by another step, if that other step's check
+returns a 0 exit code, then the required step will also not be run.
+
+In the below config, if the generated client directory does not exist, then the
+apt repo data will be retrieved and java will be installed, so that it can be
+used to build a swagger client. If the client does not need to be build, the
+dependencies will also not be installed as part of the teststack run steps.
+
+.. code-block:: toml
+
+    [tests.steps.client-deps]
+    command = [
+        "apt update",
+        "apt install -y openjdk-11-jre"
+    ]
+    user = "root"
+
+    [tests.steps.client]
+    command = "make client"
+    requires = [
+        "client-deps"
+    ]
+    check = "test -d clients/python/generated/"
+
+    [tests.steps.tests]
+    command = "coverage run -m pytest"
+    requires = [
+        "client"
+    ]
+
 tests.environment
 -----------------
 
