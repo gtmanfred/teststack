@@ -196,7 +196,8 @@ def test_container_run(runner, attrs, client):
     assert client.containers.run.called is False
     assert result.exit_code == 0
     assert 'foobarbaz' in result.output
-    assert 'Run Command: env' in result.output
+    assert 'Run Command: test -f /etc/hosts1323' in result.output
+    assert 'Run Command: env' not in result.output
 
 
 def test_container_run_step(runner, attrs, client):
@@ -217,6 +218,7 @@ def test_container_run_step(runner, attrs, client):
     assert client.containers.run.called is False
     assert result.exit_code == 0
     assert 'foobarbaz' in result.output
+    assert 'Run Command: test -f /etc/hosts1323' not in result.output
     assert 'Run Command: env' not in result.output
     assert 'Run Command: python -m pip install' in result.output
 
