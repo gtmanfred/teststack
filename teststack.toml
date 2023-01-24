@@ -8,11 +8,20 @@ copy = [
 name = "podman"
 
 [tests.steps]
-env = "env"
 install = [
     "python -m pip install setuptools",
 ]
-touch = "cp /etc/hosts garbage.xml"
+
+[tests.steps.touch]
+command = "cp /etc/hosts garbage.xml"
+requires = [
+    "env"
+]
+
+[tests.steps.env]
+command = "env"
+check = "test -f /etc/hosts1323"
+
 
 [tests.environment]
 AWS_ACCESS_KEY_ID = "keyid"

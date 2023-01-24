@@ -7,6 +7,7 @@ from docker.errors import ImageNotFound
 from docker.errors import NotFound
 
 from teststack import cli
+from teststack.commands import containers
 
 
 def test_render(runner, tag):
@@ -196,7 +197,8 @@ def test_container_run(runner, attrs, client):
     assert client.containers.run.called is False
     assert result.exit_code == 0
     assert 'foobarbaz' in result.output
-    assert 'Run Command: env' in result.output
+    assert 'Run Command: test -f /etc/hosts1323' in result.output
+    assert 'Run Command: env' not in result.output
 
 
 def test_container_run_step(runner, attrs, client):
@@ -217,6 +219,7 @@ def test_container_run_step(runner, attrs, client):
     assert client.containers.run.called is False
     assert result.exit_code == 0
     assert 'foobarbaz' in result.output
+    assert 'Run Command: test -f /etc/hosts1323' not in result.output
     assert 'Run Command: env' not in result.output
     assert 'Run Command: python -m pip install' in result.output
 
@@ -254,3 +257,59 @@ def test_container_copy(runner, client, test_files_dir):
     et = ElementTree()
     et.parse(source=f'garbage.xml')
     assert et.find('testsuite')
+
+
+def test_container_command_check_exit_code(client):
+    exit_code = 100
+    assert containers._do_check({'check_exit_code': exit_code}, None) == exit_code
+
+
+def test_container_command_check_exit_code_requires(client):
+    exit_code = 0
+    assert (
+        containers._do_check(
+            {'required_by': ['blah']},
+            {
+                'commands': {
+                    'blah': {'check_exit_code': exit_code},
+                }
+            },
+        )
+        == 0
+    )
+
+
+def test_container_command__run_command_required_by_already_run(client):
+    exit_code = 128
+    assert (
+        containers._run_command(
+            command={'required_by': ['blah']},
+            ctx={
+                'commands': {
+                    'blah': {
+                        'exit_code': exit_code,
+                    },
+                },
+            },
+        )
+        == 0
+    )
+
+
+def test_container_command__run_command_required_by(client):
+    exit_code = 128
+    client.run_command.return_value.__radd__.return_value = exit_code
+    assert (
+        containers._run_command(
+            command={'required_by': ['blah'], 'command': 'whatever', 'user': None},
+            ctx={
+                'client': client,
+                'container': 'whatever',
+                'posargs': '',
+                'commands': {
+                    'blah': {},
+                },
+            },
+        )
+        == exit_code
+    )
