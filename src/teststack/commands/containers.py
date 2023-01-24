@@ -398,7 +398,7 @@ def _do_check(command, ctx):
         for required_by in command['required_by']:
             exit_code = _do_check(ctx['commands'][required_by], ctx)
         if not exit_code:
-            return 0
+            return exit_code
 
     if 'check' in command:
         command['check_exit_code'] = _run(command['check'], command['user'], ctx)
