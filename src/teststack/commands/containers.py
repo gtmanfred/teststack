@@ -352,6 +352,10 @@ def tag(ctx):
 
 
 def _process_steps(steps):
+    """
+    Process step information from teststack.toml and convert it to a data blob
+    that can be processed in order.
+    """
     commands = {}
     for name, command in steps.items():
         cmd = {'user': None}
@@ -367,6 +371,9 @@ def _process_steps(steps):
 
 
 def _run(command, user, ctx):
+    """
+    Run a command in a container.
+    """
     if isinstance(command, str):
         command = [command]
     exit_code = 0
@@ -380,6 +387,9 @@ def _run(command, user, ctx):
 
 
 def _do_check(command, ctx):
+    """
+    Evaluate a the check on a command to see if it needs to be run.
+    """
     if 'check_exit_code' in command:
         return command['check_exit_code']
 
@@ -397,6 +407,10 @@ def _do_check(command, ctx):
 
 
 def _run_command(command, ctx):
+    """
+    Evaluate a the require and require_by attributes on a command to see if it
+    needs to be run.
+    """
     if 'exit_code' in command:
         return command['exit_code']
 
