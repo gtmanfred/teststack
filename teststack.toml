@@ -1,5 +1,5 @@
 [tests]
-min_version = 'v0.9.0'
+min_version = 'v0.13.0'
 copy = [
     "garbage.xml",
 ]
