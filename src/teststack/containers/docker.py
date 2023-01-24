@@ -175,6 +175,7 @@ class Client:
             dockerfile=dockerfile,
             tag=tag,
             nocache=rebuild,
+            pull=rebuild,
             decode=True,
             rm=True,
             buildargs=buildargs or {},
