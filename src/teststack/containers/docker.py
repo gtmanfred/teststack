@@ -145,7 +145,7 @@ class Client:
             tty=True,
             environment={
                 'COLUMNS': terminal.columns or 80,
-                'LINES': terminal.columns or 20,
+                'LINES': terminal.columns or 24,
             },
             user=user or '',
         )['Id']
