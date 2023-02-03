@@ -32,7 +32,6 @@ def test_render_with_env_var_override(runner):
 
 def test_render_isolated(runner):
     with open('Dockerfile.j2') as fh_, runner.isolated_filesystem() as th_:
-
         with open('Dockerfile.j2', 'w') as wh_:
             wh_.write(fh_.read())
 
