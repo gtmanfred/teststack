@@ -1,6 +1,7 @@
 import io
 import os
 import select
+import shutil
 import socket
 import sys
 import tarfile
@@ -136,11 +137,16 @@ class Client:
     def run_command(self, container, command, user=None):
         container = self.client.containers.get(container)
         click.echo(click.style(f'Run Command: {command}', fg='green'))
+        terminal = shutil.get_terminal_size()
         exec_id = container.client.api.exec_create(
             container.id,
             command,
             stdin=True,
             tty=True,
+            environment={
+                'COLUMNS': terminal.columns or 80,
+                'LINES': terminal.columns or 20,
+            },
             user=user or '',
         )['Id']
 
