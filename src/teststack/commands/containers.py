@@ -577,7 +577,7 @@ def copy_(ctx):
     client = ctx.obj['client']
     name = f'{ctx.obj.get("project_name")}_tests'
     exit_code = 0
-    for src in ctx.obj.get('tests.copy'):
+    for src in ctx.obj.get('tests.copy', []):
         result = client.cp(name, src)
         if result is False:
             click.echo(click.style(f'Failed to retrieve {src}!', fg='red'))
