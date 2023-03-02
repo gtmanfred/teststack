@@ -51,7 +51,7 @@ class Client:
         return networks[0]
 
     def network_create(self, name):
-        self.client.networks.create(name, driver="bridge")
+        return self.client.networks.create(name, driver="bridge")
 
     def network_prune(self):
         self.client.networks.prune()
@@ -120,7 +120,12 @@ class Client:
         return True
 
     def start(self, name):
-        self.client.containers.get(name).start()
+        container = self.client.containers.get(name)
+        for network_name, network in container.attrs['NetworkSettings']['Networks'].items():
+            if not self.network_get(name=network_name):
+                self.client.api.disconnect_container_from_network(container.id, network['NetworkId'], force=True)
+                self.network_create(name=network_name).connect(container)
+        container.start()
 
     def status(self, name):
         try:
