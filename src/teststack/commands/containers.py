@@ -455,11 +455,22 @@ def _run_commands(ctx):
 
 @cli.command()
 @click.option('--step', '-s', help='Which step to run')
+@click.option(
+    '--copy',
+    '-c',
+    is_flag=True,
+    default=False,
+    help='Copy files out of the container after all the steps have been run',
+)
 @click.argument('posargs', nargs=-1, type=click.UNPROCESSED)
 @click.pass_context
-def run(ctx, step, posargs):
+def run(ctx, step, copy, posargs):
     """
     Run the specified test steps from the teststack.toml.
+
+    --copy, -c
+
+        Copy files from [tests.copy] out of the container after the steps have been run
 
     --step, -s
 
@@ -488,6 +499,10 @@ def run(ctx, step, posargs):
     commands = _process_steps(steps)
     runctx = {'commands': commands, 'container': container, 'posargs': posargs, 'client': ctx.obj['client']}
     exit_code = _run_commands(runctx)
+
+    if copy is True:
+        ctx.invoke(copy_)
+
     if exit_code:
         sys.exit(exit_code)
 
