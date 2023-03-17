@@ -21,12 +21,12 @@ jobs:
         - 3.11
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         fetch-depth: 0
 
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v3
       with:
         python-version: ${{ matrix.python-version }}
 
@@ -39,15 +39,15 @@ jobs:
       run: tox -- --junit-xml pytest.xml
 
     - name: Codecov.io
-      uses: codecov/codecov-action@v1.3.2
+      uses: codecov/codecov-action@v3
       with:
-        file: ./coverage.xml
+        files: ./coverage.xml
         flags: unittests
         fail_ci_if_error: true
         token: ${{ secrets.CODECOV_TOKEN }}
 
     - name: Publish Test Report
-      uses: mikepenz/action-junit-report@v2
+      uses: mikepenz/action-junit-report@v3
       if: always()
       with:
         report_paths: pytest.xml
@@ -58,11 +58,11 @@ jobs:
     if: startsWith(github.event.ref, 'refs/tags')
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@master
+    - uses: actions/checkout@v3
     - name: Set up Python 3.8
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v3
       with:
-        python-version: 3.8
+        python-version: 3.11
     - name: Install pypa/build
       run: |
         python -m pip install build --user
@@ -70,7 +70,7 @@ jobs:
       run: |
         python -m build .
     - name: Publish a Python distribution to PyPI
-      uses: pypa/gh-action-pypi-publish@master
+      uses: pypa/gh-action-pypi-publish@release/v1
       with:
         user: __token__
         password: ${{ secrets.pypi_password }}
