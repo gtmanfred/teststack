@@ -44,8 +44,8 @@ class Client:
             return self.client.containers.get(container).image.id
         return None
 
-    def network_get(self, name):
-        networks = self.client.networks.list(names=[name])
+    def network_get(self, names=None, ids=None):
+        networks = self.client.networks.list(names=names or [], ids=ids or [])
         if not networks:
             return None
         return networks[0]
@@ -70,7 +70,7 @@ class Client:
         network='bridge',
         service='tests',
     ):
-        networkobj = self.network_get(network)
+        networkobj = self.network_get(names=[network])
         if networkobj is None:
             self.network_create(network)
 
@@ -122,9 +122,11 @@ class Client:
     def start(self, name):
         container = self.client.containers.get(name)
         for network_name, network in container.attrs['NetworkSettings']['Networks'].items():
-            if not self.network_get(name=network_name):
-                self.client.api.disconnect_container_from_network(container.id, network['NetworkId'], force=True)
-                self.network_create(name=network_name).connect(container)
+            if not self.network_get(ids=[network['NetworkID']]):
+                self.client.api.disconnect_container_from_network(container.id, network_name, force=True)
+                if not self.network_get(names=[network_name]):
+                    self.network_create(name=network_name)
+                self.network_get(names=[network_name]).connect(container)
         container.start()
 
     def status(self, name):
