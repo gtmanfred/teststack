@@ -119,10 +119,18 @@ class Client:
         archive.extract(src)
         return True
 
+    @staticmethod
+    def _get_network_id(network):
+        if 'NetworkId' in network:
+            return network['NetworkId']
+        if 'NetworkID' in network:
+            return network['NetworkID']
+        return None
+
     def start(self, name):
         container = self.client.containers.get(name)
         for network_name, network in container.attrs['NetworkSettings']['Networks'].items():
-            if not self.network_get(ids=[network['NetworkID']]):
+            if not self.network_get(ids=[self._get_network_id(network)]):
                 self.client.api.disconnect_container_from_network(container.id, network_name, force=True)
                 if not self.network_get(names=[network_name]):
                     self.network_create(name=network_name)
