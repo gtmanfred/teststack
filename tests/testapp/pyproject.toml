@@ -11,7 +11,7 @@ Flask-SQLAlchemy = "^2.5.1"
 figenv = "^1.0.1"
 SQLAlchemy = {extras = ["postgresql_psycopg2binary"], version = "^1.4.22"}
 Flask-Caching = "^2.0.1"
-redis = "^3.5.3"
+redis = "^4.4.4"
 
 [tool.poetry.group.dev.dependencies]
 coverage = "^6.5.0"
