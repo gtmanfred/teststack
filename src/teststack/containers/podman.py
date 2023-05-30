@@ -199,5 +199,13 @@ class Client:
                 data[f'PORT;{port}'] = port_data[0]['HostPort']
         return data
 
-    def exec(self, container):
-        os.execvp('podman', ['podman', 'exec', '-ti', container, 'bash'])
+    def exec(self, container, user=None, command=None):
+        cmd = ['podman', 'exec', '-ti']
+        if user is not None:
+            cmd.extend(['-u', user])
+        cmd.append(container)
+        if command is not None:
+            cmd.extend(command)
+        else:
+            cmd.append('bash')
+        os.execvp('podman', cmd)

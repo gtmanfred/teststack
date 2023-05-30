@@ -219,9 +219,13 @@ class Client:
                 data[f'PORT;{port}'] = port_data[0]['HostPort']
         return data
 
-    def exec(self, container, user=None):
-        command = ['docker', 'exec', '-ti']
+    def exec(self, container, user=None, command=None):
+        cmd = ['docker', 'exec', '-ti']
         if user is not None:
-            command.extend(['-u', user])
-        command.extend([container, 'bash'])
-        os.execvp('docker', command)  # pragma: no cover
+            cmd.extend(['-u', user])
+        cmd.append(container)
+        if command is not None:
+            cmd.extend(command)
+        else:
+            cmd.extend(['bash'])
+        os.execvp('docker', cmd)  # pragma: no cover
