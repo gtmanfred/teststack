@@ -26,7 +26,8 @@ import jinja2
 
 from teststack import cli
 from teststack.git import get_path
-from teststack.configuration import Service
+from teststack.configuration import Service, Tests
+from teststack.configuration.tests import Step
 
 
 @cli.command()
@@ -56,8 +57,10 @@ def start(ctx, no_tests, no_mount, imp, prefix):
         teststack start --no-tests
     """
     client = ctx.obj.get('client')
+    tests: Tests = ctx.obj.get('tests')
+
     if no_mount is not True:
-        no_mount = not ctx.obj.get('tests.mount', True)
+        no_mount = not tests.mount
 
     service: str
     data: Service
@@ -109,9 +112,11 @@ def start(ctx, no_tests, no_mount, imp, prefix):
         current_image_id = None
 
     if current_image_id is None:
-        command = ctx.obj.get('tests.command', True)
+        # TODO: Clean up command = True garbage.
+        # Looks like all code currently supported containerization engines use a tail, so use that if command is None
+        command = tests.command if tests.command is not None else True
         if imp is True:
-            command = ctx.obj.get('tests.import.command', None)
+            command = tests._import.command
 
         container = client.run(
             image=image,
@@ -119,13 +124,13 @@ def start(ctx, no_tests, no_mount, imp, prefix):
             name=name,
             environment=env,
             command=command,
-            ports=ctx.obj.get('tests.ports', {}),
+            ports=tests.ports,
             mount_cwd=not no_mount,
             network=ctx.obj['project_name'],
         )
 
         if imp is True:
-            for step in ctx.obj.get('tests.import.setup', []):
+            for step in tests._import.setup:
                 client.run_command(
                     container,
                     step,
@@ -310,7 +315,8 @@ def build(ctx, rebuild, tag, dockerfile, template_file, directory, service):
         directory = data.build
         buildargs = data.buildargs
     else:
-        buildargs = ctx.obj.get(f'tests.buildargs')
+        tests: Tests = ctx.obj.get('tests')
+        buildargs = tests.buildargs
 
     try:
         tempstat = os.stat(os.path.join(directory, template_file))
@@ -363,21 +369,18 @@ def tag(ctx):
     click.echo(ctx.obj['tag'])
 
 
-def _process_steps(steps):
+def _process_steps(steps: dict[str, Step]) -> dict[str, dict[str, str | set]]:
     """
     Process step information from teststack.toml and convert it to a data blob
     that can be processed in order.
     """
-    commands = {}
-    for name, command in steps.items():
-        cmd = {'user': None}
-        if isinstance(command, dict):
-            cmd.update(command)
-            if 'requires' in cmd:
-                for require in cmd['requires']:
-                    commands.setdefault(require, {}).setdefault('required_by', set()).add(name)
-        else:
-            cmd.update({'command': command})
+    commands: dict[str, dict[str, str | set]] = {}
+    for name, step in steps.items():
+        cmd = {'command': step.command, 'user': step.user}
+        for required_step in step.requires:
+            commands.setdefault(required_step, {}).setdefault('required_by', set()).add(name)
+        if step.check is not None:
+            cmd['check'] = step.check
         commands.setdefault(name, {}).update(cmd)
     return commands
 
@@ -499,13 +502,13 @@ def run(ctx, step, copy, posargs):
         teststack run --step tests -- -k test_add_user tests/unit/test_users.py
     """
     container = ctx.invoke(start)
-
-    steps = ctx.obj['tests'].get('steps', {})
+    tests: Tests = ctx.obj['tests']
+    steps = tests.steps
     if step:
-        stepobj = steps.get(step, '{posargs}')
+        stepobj = steps.get(step, Step(name="default", command=['{posargs}']))
         new_steps = {step: stepobj}
-        if 'requires' in stepobj:
-            new_steps.update({s: steps[s] for s in stepobj['requires']})
+        if stepobj.requires is not None:
+            new_steps.update({s: steps[s] for s in stepobj.requires})
         steps = new_steps
     exit_code = 0
     commands = _process_steps(steps)
@@ -609,7 +612,8 @@ def copy_(ctx):
     client = ctx.obj['client']
     name = f'{ctx.obj.get("project_name")}_tests'
     exit_code = 0
-    for src in ctx.obj.get('tests.copy', []):
+    tests: Tests = ctx.obj['tests']
+    for src in tests.copy:
         result = client.cp(name, src)
         if result is False:
             click.echo(click.style(f'Failed to retrieve {src}!', fg='red'))

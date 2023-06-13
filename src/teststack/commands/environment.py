@@ -2,7 +2,7 @@ import click.testing
 
 from teststack import cli
 from teststack.git import get_path
-from teststack.configuration import Service
+from teststack.configuration import Service, Tests
 
 
 @cli.command()
@@ -43,6 +43,7 @@ def env(ctx, no_export, inside, quiet, prefix):
     """
     envvars = []
     client = ctx.obj.get('client')
+    tests: Tests = ctx.obj['tests']
     service: str
     data: Service
     for service, data in ctx.obj.get('services').items():
@@ -75,14 +76,14 @@ def env(ctx, no_export, inside, quiet, prefix):
     name = f'{ctx.obj.get("project_name")}_tests'
     container_data = client.get_container_data(name, network=ctx.obj['project_name'], inside=inside)
     if container_data is not None:
-        for key, value in ctx.obj.get('tests.environment', {}).items():
+        for key, value in tests.environment.items():
             envvars.append(
                 f'{"" if no_export else "export "}{key}={value}'.format_map(
                     container_data,
                 )
             )
     else:
-        for key, value in ctx.obj.get('tests.environment', {}).items():
+        for key, value in tests.environment.items():
             envvars.append(f'{"" if no_export else "export "}{key}={value}')
     if quiet is False:
         click.echo('\n'.join(envvars))
@@ -103,16 +104,17 @@ def env(ctx, no_export, inside, quiet, prefix):
 def import_env(ctx, no_export, inside, prefix):
     envvars = []
     client = ctx.obj['client']
+    tests: Tests = ctx.obj['tests']
     name = f'{prefix}{ctx.obj.get("project_name")}_tests'
     container_data = client.get_container_data(name, network=ctx.obj['project_name'], inside=inside)
     if container_data is not None:
-        for key, value in ctx.obj.get('tests.export', {}).items():
+        for key, value in tests.export.items():
             envvars.append(
                 f'{"" if no_export else "export "}{key}={value}'.format_map(
                     container_data,
                 )
             )
     else:
-        for key, value in ctx.obj.get('tests.export', {}).items():
+        for key, value in tests.export.items():
             envvars.append(f'{"" if no_export else "export "}{key}={value}')
     click.echo('\n'.join(envvars))

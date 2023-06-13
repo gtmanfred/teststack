@@ -17,7 +17,7 @@ class Step:
 
     name: str
     command: list[str]
-    requires: list[str] | None = None
+    requires: list[str] = field(default_factory=list)
     check: str | None = None
     user: str | None = None
 
@@ -63,7 +63,7 @@ class Import:
     setup: A list of setup commands to run in the container
     """
 
-    command: str
+    command: str = None
     setup: list[str] = field(default_factory=list)
 
 
@@ -74,7 +74,10 @@ class Tests:
     inside that container as part of a test run.
 
     min_version: Minimum version of teststack that can run this configuration.
+    mount: Whether to mount the current directory as a volume.
     copy: List of files to copy out of the test container when the `copy` command is run.
+    command: Main process to run in test container. Overrides teststack default
+        (Default is to run a tail -- sh -c 'trap \"trap - TERM; kill -s TERM -- -$$\" TERM; tail -f /dev/null & wait)
     steps: List of commands to execute (in order)
     environment: List of environmental variables and values to set in the container.
     ports: List of port mappings to set for the container <Container-Port>:<Host-Port>.
@@ -87,13 +90,15 @@ class Tests:
     """
 
     min_version: str | None = None
-    copy: list[str] | None = None
-    steps: OrderedDict[str, Step] | None = None
-    environment: dict[str, str] | None = None
-    ports: dict[str, str] | None = None
-    export: dict[str, str] | None = None
+    mount: bool = True
+    copy: list[str] = field(default_factory=list)
+    command: str | None = None
+    steps: OrderedDict[str, Step] = field(default_factory=OrderedDict)
+    environment: dict[str, str] = field(default_factory=dict)
+    ports: dict[str, str] = field(default_factory=dict)
+    export: dict[str, str] = field(default_factory=dict)
     buildargs: dict[str, str] | None = None
-    _import: Step | None = None
+    _import: Import = field(default_factory=Import)
 
     @classmethod
     def load(cls, raw_configuration: dict[str, typing.Any]) -> 'Tests':

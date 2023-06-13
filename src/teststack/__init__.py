@@ -165,7 +165,7 @@ def cli(ctx, config, local_config, project_name, path):
             sys.exit(10)
 
     ctx.obj['services'] = configuration.services
-    ctx.obj['tests'] = config.get('tests', {})
+    ctx.obj['tests'] = configuration.tests
     ctx.obj['project_name'] = os.path.basename(path.strip('/')) if project_name is None else project_name
 
     ctx.obj['client'] = get_client(config.get('client', {}))
