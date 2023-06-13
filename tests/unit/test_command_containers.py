@@ -223,6 +223,24 @@ def test_container_run_step(runner, attrs, client):
     assert 'Run Command: python -m pip install' in result.output
 
 
+def test_container_run_step_invalid_step(runner, attrs, client):
+    client.containers.get.return_value.attrs = attrs
+    client.images.get.return_value.id = client.containers.get.return_value.image.id
+    client.containers.get.return_value.client.api.exec_start.return_value = [
+        'foo',
+        'bar',
+        'baz',
+    ]
+    client.containers.get.return_value.client.api.exec_inspect.return_value = {
+        'ExitCode': 0,
+    }
+
+    result = runner.invoke(cli, ['run', '--step=stepthatdoesnotexist'])
+    assert client.containers.run.called is False
+    assert result.exit_code == 1
+    assert 'stepthatdoesnotexist is not an available step' in result.output
+
+
 def test_container_tag(runner):
     with runner.isolated_filesystem() as fh_:
         result = runner.invoke(cli, ['tag'])
