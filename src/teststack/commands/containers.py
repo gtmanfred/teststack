@@ -19,12 +19,14 @@ the tests you could do the following.
 """
 import os
 import sys
+from dataclasses import asdict
 
 import click
 import jinja2
 
 from teststack import cli
 from teststack.git import get_path
+from teststack.configuration import Service
 
 
 @cli.command()
@@ -57,30 +59,32 @@ def start(ctx, no_tests, no_mount, imp, prefix):
     if no_mount is not True:
         no_mount = not ctx.obj.get('tests.mount', True)
 
+    service: str
+    data: Service
     for service, data in ctx.obj.get('services').items():
-        if 'import' in data:
-            ctx.invoke(import_, **data['import'])
+        if data._import is not None:
+            ctx.invoke(import_, repo=data._import.repo, ref=data._import.ref)
             continue
         name = f'{prefix}{ctx.obj.get("project_name")}_{service}'
         container = client.container_get(name)
-        if 'build' in data:
-            data['image'] = f'{ctx.obj.get("prefix")}{service}:{ctx.obj.get("commit", "latest")}'
-            image = client.image_get(data['image'])
+        if data.build is not None:
+            data.image = f'{ctx.obj.get("prefix")}{service}:{ctx.obj.get("commit", "latest")}'
+            image = client.image_get(data.image)
             if image is None:
                 ctx.invoke(
                     build,
-                    directory=data['build'],
-                    tag=data['image'],
+                    directory=data.build,
+                    tag=data.image,
                     service=service,
                 )
         if container is None:
             click.echo(f'Starting container: {name}')
             client.run(
-                image=data['image'],
-                ports=data.get('ports', {}),
+                image=data.image,
+                ports=data.ports,
                 name=name,
-                command=data.get('command', None),
-                environment=data.get('environment', {}),
+                command=data.command,
+                environment=data.environment,
                 mount_cwd=False,
                 network=ctx.obj['project_name'],
                 service=service,
@@ -103,8 +107,6 @@ def start(ctx, no_tests, no_mount, imp, prefix):
     if current_image_id != image:
         client.end_container(name)
         current_image_id = None
-    else:
-        container = client.container_get(name)
 
     if current_image_id is None:
         command = ctx.obj.get('tests.command', True)
@@ -128,6 +130,8 @@ def start(ctx, no_tests, no_mount, imp, prefix):
                     container,
                     step,
                 )
+    else:
+        container = client.container_get(name)
 
     return container
 
@@ -149,9 +153,11 @@ def stop(ctx, prefix):
     """
     client = ctx.obj['client']
     project_name = ctx.obj["project_name"]
+    service: str
+    data: Service
     for service, data in ctx.obj['services'].items():
-        if 'import' in data:
-            ctx.invoke(import_, stop=True, **data['import'])
+        if data._import is not None:
+            ctx.invoke(import_, stop=True, repo=data._import.repo, ref=data._import.ref)
             continue
         name = f'{prefix}{project_name}_{service}'
         container = client.container_get(name)
@@ -294,10 +300,15 @@ def build(ctx, rebuild, tag, dockerfile, template_file, directory, service):
         teststack build --tag blah:old
     """
     if service:
+        try:
+            data = ctx.obj.get('services')[service]
+        except KeyError as e:
+            click.echo("Service {service} is not defined", err=True)
+            sys.exit(11)
         if tag is None:
             tag = f'{ctx.obj.get("prefix")}{service}:{ctx.obj.get("commit", "latest")}'
-        directory = ctx.obj.get(f'services.{service}.build')
-        buildargs = ctx.obj.get(f'services.{service}.buildargs')
+        directory = data.build
+        buildargs = data.buildargs
     else:
         buildargs = ctx.obj.get(f'tests.buildargs')
 
@@ -521,7 +532,8 @@ def status(ctx):
     client = ctx.obj['client']
     click.echo('{:_^16}|{:_^36}|{:_^16}'.format('status', 'name', 'data'))
     network_name = network = ctx.obj['project_name']
-    for service, data in ctx.obj['services'].items():
+    service: str
+    for service in ctx.obj['services'].keys():
         name = f'{ctx.obj["project_name"]}_{service}'
         container = client.get_container_data(name, network_name) or {}
         container.pop('HOST', None)

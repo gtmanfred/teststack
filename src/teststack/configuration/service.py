@@ -1,5 +1,5 @@
 import typing
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 @dataclass
@@ -22,6 +22,7 @@ class Service:
 
     image: Docker image to use for the container
     build: Dockerfile to use to build an image to use for the container
+    command: Command to run in this service container (overrides default image command)
     ports: Container ports to forward/map. <Container-Port>:<Host-Port>
         Host port can be left blank to 'auto-map' to a free port.
     environment: Environmental variables to inject into this container.
@@ -35,11 +36,12 @@ class Service:
     name: str
     image: str | None = None
     build: str | None = None
-    ports: dict[str, str] | None = None
-    environment: dict[str, str] | None = None
-    export: dict[str, str] | None = None
+    command: str | None = None
+    ports: dict[str, str] = field(default_factory=dict)
+    environment: dict[str, str] = field(default_factory=dict)
+    export: dict[str, str] = field(default_factory=dict)
     buildargs: dict[str, str] | None = None
-    _import: dict[str, Import] | None = None
+    _import: Import | None = None
 
     @classmethod
     def load(cls, name: str, raw_configuration: dict[str, typing.Any]) -> 'Service':
