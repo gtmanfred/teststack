@@ -1,7 +1,6 @@
 import typing
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from collections import OrderedDict
-from .service import Import
 
 
 @dataclass
@@ -45,8 +44,27 @@ class Step:
                 kwargs["requires"] = [raw_configuration["requires"]]
             else:
                 kwargs["requires"] = raw_configuration["requires"]
-        kwargs.update({k: v for k, v in raw_configuration if k not in ["command", "requires"]})
+        kwargs.update(
+            {
+                k: v
+                for k, v in raw_configuration.items()
+                if k not in ["command", "requires"] and k in cls.__dataclass_fields__  # Ignore extra fields for now
+            }
+        )
         return cls(**kwargs)
+
+
+@dataclass
+class Import:
+    """
+    Defines steps (commands) to execute when the test container is imported as a dependent service
+
+    command: The main command to run for the container
+    setup: A list of setup commands to run in the container
+    """
+
+    command: str
+    setup: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -65,8 +83,7 @@ class Tests:
         (For example if another test imports this test container as a service)
     buildargs: Inject environmental variables into the build context.
         Useful for templating a Dockerfile without using Jinja
-    import: List of teststack configurations to import as dependent services.
-        Useful for setting up 'clusters' to test against.
+    import: Commands to run in the 'test' container when this teststack configuration is imported.
     """
 
     min_version: str | None = None
@@ -76,15 +93,25 @@ class Tests:
     ports: dict[str, str] | None = None
     export: dict[str, str] | None = None
     buildargs: dict[str, str] | None = None
-    _import: dict[str, Import | list[str] | str] | None = None
+    _import: Step | None = None
 
     @classmethod
     def load(cls, raw_configuration: dict[str, typing.Any]) -> 'Tests':
         # Note: Can remove this if it's acceptable to add pydantic as a dependency
         kwargs = {}
+        if "min_version" in raw_configuration:
+            # Handle striping a leading 'v'
+            kwargs["min_version"] = raw_configuration["min_version"].lstrip('v')
         if "steps" in raw_configuration:
-            kwargs["steps"] = {k: Step.load(k, v) for k, v in raw_configuration["steps"]}
+            kwargs["steps"] = {k: Step.load(k, v) for k, v in raw_configuration["steps"].items()}
         if "import" in raw_configuration:
-            kwargs["import"] = Import(**raw_configuration["import"])
-        kwargs.update({k: v for k, v in raw_configuration if k not in ["steps", "import"]})
+            kwargs["_import"] = Import(**raw_configuration["import"])
+        kwargs.update(
+            {
+                k: v
+                for k, v in raw_configuration.items()
+                if k not in ["min_version", "steps", "import"]
+                and k in cls.__dataclass_fields__  # Ignore extra fields for now
+            }
+        )
         return cls(**kwargs)

@@ -6,18 +6,28 @@ from .service import Service
 
 
 @dataclass
+class Client:
+    name: str = "docker"
+    prefix: str | None = None
+
+
+@dataclass
 class Configuration:
-    client: str = "docker"
-    tests: Tests | None = None
-    services: list[Service] = field(default_factory=list)
+    client: Client = field(default_factory=Client)
+    tests: Tests = field(default_factory=Tests)
+    services: dict[str, Service] = field(default_factory=list)
 
     @classmethod
     def load(cls, raw_configuration: dict[str, typing.Any]):
         # Note: Can remove this if it's acceptable to add pydantic as a dependency
-        kwargs = {}
+        kwargs = {
+            k: v for k, v in raw_configuration.items() if k in cls.__dataclass_fields__  # Ignore extra fields for now
+        }
+        # Handle loading
+        if "client" in raw_configuration:
+            kwargs["client"] = Client(**raw_configuration["client"])
         if "tests" in raw_configuration:
             kwargs["tests"] = Tests.load(raw_configuration["tests"])
         if "services" in raw_configuration:
-            kwargs["services"] = Service.load(raw_configuration["services"])
-        kwargs.update({k: v for k, v in raw_configuration if k not in ["tests", "services"]})
+            kwargs["services"] = {k: Service.load(k, v) for k, v in raw_configuration["services"].items()}
         return cls(**kwargs)

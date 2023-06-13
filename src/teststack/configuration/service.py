@@ -27,6 +27,8 @@ class Service:
     environment: Environmental variables to inject into this container.
     export: Environmental variables to export.
         These will be injected into the test container.
+    buildargs: Inject environmental variables into the build context.
+        Useful for templating a Dockerfile without using Jinja
     import: Repository to pull a teststack configuration for this service.
     """
 
@@ -36,13 +38,20 @@ class Service:
     ports: dict[str, str] | None = None
     environment: dict[str, str] | None = None
     export: dict[str, str] | None = None
+    buildargs: dict[str, str] | None = None
     _import: dict[str, Import] | None = None
 
     @classmethod
-    def load(cls, raw_configuration: dict[str, typing.Any]) -> 'Service':
+    def load(cls, name: str, raw_configuration: dict[str, typing.Any]) -> 'Service':
         # Note: Can remove this if it's acceptable to add pydantic as a dependency
-        kwargs = {}
+        kwargs = {"name": name}
         if "import" in raw_configuration:
-            kwargs["import"] = Import(**raw_configuration["import"])
-        kwargs.update({k: v for k, v in raw_configuration if k not in ["import"]})
+            kwargs["_import"] = Import(**raw_configuration["import"])
+        kwargs.update(
+            {
+                k: v
+                for k, v in raw_configuration.items()
+                if k not in ["import"] and k in cls.__dataclass_fields__  # Ignore extra fields for now
+            }
+        )
         return cls(**kwargs)

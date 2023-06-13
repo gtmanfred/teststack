@@ -1,3 +1,4 @@
+import typing
 import os.path
 import pathlib
 import sys
@@ -28,6 +29,43 @@ except ImportError:  # pragma: no cover
 
 
 class DictConfig(dict):
+    def __init__(self, *args, **kwargs):
+        """
+        The python builtin dictionary has 3 constructor signatures
+        class dict(**kwargs)
+        class dict(mapping, **kwargs)
+        class dict(iterable, **kwargs)
+        See https://docs.python.org/3/library/stdtypes.html#dict
+        IMPORTANT:
+        Note this takes any value in the dict suffixed with a '_' and strip that '_'
+        This is in response to needing the field 'import' available, but that is a reserved
+        python variable.
+        """
+        seq_or_mapping: typing.Mapping | typing.Iterable = args[0] if args else None
+        if seq_or_mapping is not None:
+            if hasattr(seq_or_mapping, "items"):
+                # All Mapping types must have `items`
+                arg: typing.Mapping = {self.field_name(k): v for k, v in seq_or_mapping.items() if v is not None}
+            else:
+                # If it's not a Mapping it must be an Iterable
+                arg: typing.Iterable = ((self.field_name(k), v) for k, v in seq_or_mapping if v is not None)
+
+            args = (arg, *args[1:])
+
+        kwargs: typing.Mapping = {self.field_name(k): v for k, v in kwargs.items() if v is not None}
+
+        super().__init__(*args, **kwargs)
+
+    @staticmethod
+    def field_name(key: str) -> str:
+        """
+        Takes any value in the dict prefixed with a '_' and strip that '_' This is in response to
+        being unable to use reserved python keywords, such as "import", as field names in a dataclass
+        """
+        if key[0] == "_":
+            key = key[1:]
+        return key
+
     def get(self, key, default=None):
         if isinstance(default, dict):
             default = DictConfig(default)
@@ -61,9 +99,12 @@ def load_configuration(path: str, base_configuration: Configuration | None = Non
         raw_config = toml.load(f)
 
     # Use the DictConfig class to handle the merge
-    config_dictionary = asdict(base_configuration, dict_factory=DictConfig)
-    new_config = DictConfig(raw_config)
-    config_dictionary.merge(new_config)
+    if base_configuration is not None:
+        config_dictionary = asdict(base_configuration, dict_factory=DictConfig)
+        new_config = DictConfig(raw_config)
+        config_dictionary.merge(new_config)
+    else:
+        config_dictionary = DictConfig(raw_config)
     config = Configuration.load(config_dictionary)
     return config
 
@@ -102,22 +143,26 @@ def cli(ctx, config, local_config, project_name, path):
     ctx.obj['currentdir'] = os.getcwd()
     os.chdir(path)
 
+    configuration: Configuration
     try:
-        configuration: Configuration = load_configuration(config)
+        configuration = load_configuration(config)
     except FileNotFoundError:
-        click.secho(f"Configuration file {config} not found; using defaults", fg='yellow')
+        click.secho(f"Configuration file {config} not found; using defaults", fg='yellow', err=True)
         configuration = Configuration()
 
     try:
-        configuration = load_configuration(local_config, base_configuration=config)
+        configuration = load_configuration(local_config, base_configuration=configuration)
     except FileNotFoundError:
         pass
     config = asdict(configuration, dict_factory=DictConfig)
 
-    min_version = Version(config.get('tests.min_version', 'v0.0.0').lstrip('v'))
-    if min_version > Version(__version__):
-        click.echo(f'Current teststack version is too low, upgrade to atleast {min_version}', err=True)
-        sys.exit(10)
+    if configuration.tests.min_version is not None:
+        if Version(configuration.tests.min_version) > Version(__version__):
+            click.echo(
+                f'Current teststack version is too low, upgrade to at least {configuration.tests.min_version}',
+                err=True,
+            )
+            sys.exit(10)
 
     ctx.obj['services'] = config.get('services', {})
     ctx.obj['tests'] = config.get('tests', {})
