@@ -192,9 +192,9 @@ def test_container_run(runner, attrs, client):
     }
 
     result = runner.invoke(cli, ['run'])
+    assert result.exit_code == 0, f"Result: {result.output}"
     assert client.containers.get.call_count == 28
     assert client.containers.run.called is False
-    assert result.exit_code == 0
     assert 'foobarbaz' in result.output
     assert 'Run Command: test -f /etc/hosts1323' in result.output
     assert 'Run Command: env' not in result.output
@@ -214,9 +214,9 @@ def test_container_run_step(runner, attrs, client):
     }
 
     result = runner.invoke(cli, ['run', '--step=install'])
+    assert result.exit_code == 0, f"Result: {result.output}"
     assert client.containers.get.call_count == 26
     assert client.containers.run.called is False
-    assert result.exit_code == 0
     assert 'foobarbaz' in result.output
     assert 'Run Command: test -f /etc/hosts1323' not in result.output
     assert 'Run Command: env' not in result.output
@@ -236,8 +236,8 @@ def test_container_run_step_invalid_step(runner, attrs, client):
     }
 
     result = runner.invoke(cli, ['run', '--step=stepthatdoesnotexist'])
-    assert client.containers.run.called is False
     assert result.exit_code == 1
+    assert client.containers.run.called is False
     assert 'stepthatdoesnotexist is not an available step' in result.output
 
 
