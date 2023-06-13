@@ -565,17 +565,19 @@ def import_(ctx, repo, ref, stop):
     runner = click.testing.CliRunner()
     if stop is True:
         click.echo(f'Stopping import environment: {path}')
-        runner.invoke(
+        result = runner.invoke(
             cli,
             [
                 f'--path={path}',
                 'stop',
                 f'--prefix={ctx.obj.get("project_name")}.',
             ],
+            catch_exceptions=False,
         )
+        click.echo(result.output)
     else:
         click.echo(f'Starting import environment: {path}')
-        runner.invoke(
+        result = runner.invoke(
             cli,
             [
                 f'--path={path}',
@@ -584,7 +586,9 @@ def import_(ctx, repo, ref, stop):
                 '--imp',
                 f'--prefix={ctx.obj.get("project_name")}.',
             ],
+            catch_exceptions=False,
         )
+        click.echo(result.output)
 
 
 @cli.command(name='copy')
