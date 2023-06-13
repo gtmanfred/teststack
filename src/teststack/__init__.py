@@ -2,12 +2,14 @@ import os.path
 import pathlib
 import sys
 from packaging.version import Version
+from dataclasses import asdict
 
 import click
 import toml
 
 from . import git
 from .errors import IncompatibleVersionError
+from .configuration import Configuration
 
 try:
     from importlib.metadata import entry_points
@@ -50,6 +52,22 @@ class DictConfig(dict):
             self[key] = config[key]
 
 
+def load_configuration(path: str, base_configuration: Configuration | None = None) -> Configuration:
+    file = pathlib.Path(path)
+
+    if not file.exists():
+        raise FileNotFoundError(f"{path} does not exist")
+    with file.open('r') as f:
+        raw_config = toml.load(f)
+
+    # Use the DictConfig class to handle the merge
+    config_dictionary = asdict(base_configuration, dict_factory=DictConfig)
+    new_config = DictConfig(raw_config)
+    config_dictionary.merge(new_config)
+    config = Configuration.load(config_dictionary)
+    return config
+
+
 @click.group(chain=True)
 @click.option(
     '--config',
@@ -75,8 +93,6 @@ class DictConfig(dict):
 @click.pass_context
 def cli(ctx, config, local_config, project_name, path):
     ctx.ensure_object(DictConfig)
-    config = pathlib.Path(config)
-    local_config = pathlib.Path(local_config)
 
     @ctx.call_on_close
     def change_dir_to_original():
@@ -86,16 +102,17 @@ def cli(ctx, config, local_config, project_name, path):
     ctx.obj['currentdir'] = os.getcwd()
     os.chdir(path)
 
-    if config.exists():
-        with config.open('r') as fh_:
-            config = DictConfig(toml.load(fh_))
-    else:
-        config = DictConfig()
+    try:
+        configuration: Configuration = load_configuration(config)
+    except FileNotFoundError:
+        click.secho(f"Configuration file {config} not found; using defaults", fg='yellow')
+        configuration = Configuration()
 
-    if local_config.exists():
-        with local_config.open('r') as fh_:
-            local_config = toml.load(fh_)
-        config.merge(local_config)
+    try:
+        configuration = load_configuration(local_config, base_configuration=config)
+    except FileNotFoundError:
+        pass
+    config = asdict(configuration, dict_factory=DictConfig)
 
     min_version = Version(config.get('tests.min_version', 'v0.0.0').lstrip('v'))
     if min_version > Version(__version__):
