@@ -43,6 +43,9 @@ def attrs():
                 'teststack': {
                     'IPAddress': 'fakeaddress',
                 },
+                'testapp': {
+                    'IPAddress': 'faketestappaddress',
+                },
             },
         },
     }
