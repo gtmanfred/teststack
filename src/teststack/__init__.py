@@ -10,7 +10,7 @@ import toml
 
 from . import git
 from .errors import IncompatibleVersionError
-from .configuration import Configuration
+from .configuration import Configuration, ClientConfiguration
 
 try:
     from importlib.metadata import entry_points
@@ -29,43 +29,6 @@ except ImportError:  # pragma: no cover
 
 
 class DictConfig(dict):
-    def __init__(self, *args, **kwargs):
-        """
-        The python builtin dictionary has 3 constructor signatures
-        class dict(**kwargs)
-        class dict(mapping, **kwargs)
-        class dict(iterable, **kwargs)
-        See https://docs.python.org/3/library/stdtypes.html#dict
-        IMPORTANT:
-        Note this takes any value in the dict suffixed with a '_' and strip that '_'
-        This is in response to needing the field 'import' available, but that is a reserved
-        python variable.
-        """
-        seq_or_mapping: typing.Mapping | typing.Iterable = args[0] if args else None
-        if seq_or_mapping is not None:
-            if hasattr(seq_or_mapping, "items"):
-                # All Mapping types must have `items`
-                arg: typing.Mapping = {self.field_name(k): v for k, v in seq_or_mapping.items() if v is not None}
-            else:
-                # If it's not a Mapping it must be an Iterable
-                arg: typing.Iterable = ((self.field_name(k), v) for k, v in seq_or_mapping if v is not None)
-
-            args = (arg, *args[1:])
-
-        kwargs: typing.Mapping = {self.field_name(k): v for k, v in kwargs.items() if v is not None}
-
-        super().__init__(*args, **kwargs)
-
-    @staticmethod
-    def field_name(key: str) -> str:
-        """
-        Takes any value in the dict prefixed with a '_' and strip that '_' This is in response to
-        being unable to use reserved python keywords, such as "import", as field names in a dataclass
-        """
-        if key[0] == "_":
-            key = key[1:]
-        return key
-
     def get(self, key, default=None):
         if isinstance(default, dict):
             default = DictConfig(default)
@@ -90,23 +53,21 @@ class DictConfig(dict):
             self[key] = config[key]
 
 
-def load_configuration(path: str, base_configuration: Configuration | None = None) -> Configuration:
+def load_configuration(path: str, base_configuration: DictConfig | None = None) -> DictConfig:
     file = pathlib.Path(path)
 
     if not file.exists():
         raise FileNotFoundError(f"{path} does not exist")
     with file.open('r') as f:
-        raw_config = toml.load(f)
+        raw_configuration = toml.load(f)
 
     # Use the DictConfig class to handle the merge
+    configuration = DictConfig(raw_configuration)
     if base_configuration is not None:
-        config_dictionary = asdict(base_configuration, dict_factory=DictConfig)
-        new_config = DictConfig(raw_config)
-        config_dictionary.merge(new_config)
+        base_configuration.merge(configuration)
+        return base_configuration
     else:
-        config_dictionary = DictConfig(raw_config)
-    config = Configuration.load(config_dictionary)
-    return config
+        return configuration
 
 
 @click.group(chain=True)
@@ -143,18 +104,17 @@ def cli(ctx, config, local_config, project_name, path):
     ctx.obj['currentdir'] = os.getcwd()
     os.chdir(path)
 
-    configuration: Configuration
     try:
-        configuration = load_configuration(config)
+        config = load_configuration(config)
     except FileNotFoundError:
         click.secho(f"Configuration file {config} not found; using defaults", fg='yellow', err=True)
-        configuration = Configuration()
+        config = DictConfig()
 
     try:
-        configuration = load_configuration(local_config, base_configuration=configuration)
+        config = load_configuration(local_config, base_configuration=config)
     except FileNotFoundError:
         pass
-    config = asdict(configuration, dict_factory=DictConfig)
+    configuration: Configuration = Configuration.load(config)
 
     if configuration.tests.min_version is not None:
         if Version(configuration.tests.min_version) > Version(__version__):
@@ -168,12 +128,12 @@ def cli(ctx, config, local_config, project_name, path):
     ctx.obj['tests'] = configuration.tests
     ctx.obj['project_name'] = os.path.basename(path.strip('/')) if project_name is None else project_name
 
-    ctx.obj['client'] = get_client(config.get('client', {}))
-    ctx.obj['prefix'] = config.get('client.prefix', '')
-    ctx.obj.update(git.get_tag(prefix=config.get('client.prefix', '')))
+    ctx.obj['client'] = get_client(configuration.client)
+    ctx.obj['prefix'] = configuration.client.prefix
+    ctx.obj.update(git.get_tag(prefix=configuration.client.prefix))
 
 
-def get_client(client):
+def get_client(client: ClientConfiguration):
     group = 'teststack.clients'
     entries = entry_points()
 
@@ -182,10 +142,10 @@ def get_client(client):
     else:
         entries = entries.get(group, [])
 
-    client_name = client.pop('name', 'docker')
+    client_name = client.name
     for entry_point in entries:
         if entry_point.name == client_name:
-            return entry_point.load().Client(**client)
+            return entry_point.load().Client(**client.kwargs)
 
 
 def import_commands():
