@@ -1,13 +1,16 @@
+import typing
 import os.path
 import pathlib
 import sys
 from packaging.version import Version
+from dataclasses import asdict
 
 import click
 import toml
 
 from . import git
 from .errors import IncompatibleVersionError
+from .configuration import Configuration, ClientConfiguration
 
 try:
     from importlib.metadata import entry_points
@@ -50,6 +53,23 @@ class DictConfig(dict):
             self[key] = config[key]
 
 
+def load_configuration(path: str, base_configuration: DictConfig | None = None) -> DictConfig:
+    file = pathlib.Path(path)
+
+    if not file.exists():
+        raise FileNotFoundError(f"{path} does not exist")
+    with file.open('r') as f:
+        raw_configuration = toml.load(f)
+
+    # Use the DictConfig class to handle the merge
+    configuration = DictConfig(raw_configuration)
+    if base_configuration is not None:
+        base_configuration.merge(configuration)
+        return base_configuration
+    else:
+        return configuration
+
+
 @click.group(chain=True)
 @click.option(
     '--config',
@@ -75,8 +95,6 @@ class DictConfig(dict):
 @click.pass_context
 def cli(ctx, config, local_config, project_name, path):
     ctx.ensure_object(DictConfig)
-    config = pathlib.Path(config)
-    local_config = pathlib.Path(local_config)
 
     @ctx.call_on_close
     def change_dir_to_original():
@@ -86,32 +104,36 @@ def cli(ctx, config, local_config, project_name, path):
     ctx.obj['currentdir'] = os.getcwd()
     os.chdir(path)
 
-    if config.exists():
-        with config.open('r') as fh_:
-            config = DictConfig(toml.load(fh_))
-    else:
+    try:
+        config = load_configuration(config)
+    except FileNotFoundError:
+        click.secho(f"Configuration file {config} not found; using defaults", fg='yellow', err=True)
         config = DictConfig()
 
-    if local_config.exists():
-        with local_config.open('r') as fh_:
-            local_config = toml.load(fh_)
-        config.merge(local_config)
+    try:
+        config = load_configuration(local_config, base_configuration=config)
+    except FileNotFoundError:
+        pass
+    configuration: Configuration = Configuration.load(config)
 
-    min_version = Version(config.get('tests.min_version', 'v0.0.0').lstrip('v'))
-    if min_version > Version(__version__):
-        click.echo(f'Current teststack version is too low, upgrade to atleast {min_version}', err=True)
-        sys.exit(10)
+    if configuration.tests.min_version is not None:
+        if Version(configuration.tests.min_version) > Version(__version__):
+            click.echo(
+                f'Current teststack version is too low, upgrade to at least {configuration.tests.min_version}',
+                err=True,
+            )
+            sys.exit(10)
 
-    ctx.obj['services'] = config.get('services', {})
-    ctx.obj['tests'] = config.get('tests', {})
+    ctx.obj['services'] = configuration.services
+    ctx.obj['tests'] = configuration.tests
     ctx.obj['project_name'] = os.path.basename(path.strip('/')) if project_name is None else project_name
 
-    ctx.obj['client'] = get_client(config.get('client', {}))
-    ctx.obj['prefix'] = config.get('client.prefix', '')
-    ctx.obj.update(git.get_tag(prefix=config.get('client.prefix', '')))
+    ctx.obj['client'] = get_client(configuration.client)
+    ctx.obj['prefix'] = configuration.client.prefix
+    ctx.obj.update(git.get_tag(prefix=configuration.client.prefix))
 
 
-def get_client(client):
+def get_client(client: ClientConfiguration):
     group = 'teststack.clients'
     entries = entry_points()
 
@@ -120,10 +142,10 @@ def get_client(client):
     else:
         entries = entries.get(group, [])
 
-    client_name = client.pop('name', 'docker')
+    client_name = client.name
     for entry_point in entries:
         if entry_point.name == client_name:
-            return entry_point.load().Client(**client)
+            return entry_point.load().Client(**client.kwargs)
 
 
 def import_commands():

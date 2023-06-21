@@ -19,12 +19,15 @@ the tests you could do the following.
 """
 import os
 import sys
+from dataclasses import asdict
 
 import click
 import jinja2
 
 from teststack import cli
 from teststack.git import get_path
+from teststack.configuration import Service, Tests
+from teststack.configuration.tests import Step
 
 
 @cli.command()
@@ -54,33 +57,37 @@ def start(ctx, no_tests, no_mount, imp, prefix):
         teststack start --no-tests
     """
     client = ctx.obj.get('client')
-    if no_mount is not True:
-        no_mount = not ctx.obj.get('tests.mount', True)
+    tests: Tests = ctx.obj.get('tests')
 
+    if no_mount is not True:
+        no_mount = not tests.mount
+
+    service: str
+    data: Service
     for service, data in ctx.obj.get('services').items():
-        if 'import' in data:
-            ctx.invoke(import_, **data['import'])
+        if data._import is not None:
+            ctx.invoke(import_, repo=data._import.repo, ref=data._import.ref)
             continue
         name = f'{prefix}{ctx.obj.get("project_name")}_{service}'
         container = client.container_get(name)
-        if 'build' in data:
-            data['image'] = f'{ctx.obj.get("prefix")}{service}:{ctx.obj.get("commit", "latest")}'
-            image = client.image_get(data['image'])
+        if data.build is not None:
+            data.image = f'{ctx.obj.get("prefix")}{service}:{ctx.obj.get("commit", "latest")}'
+            image = client.image_get(data.image)
             if image is None:
                 ctx.invoke(
                     build,
-                    directory=data['build'],
-                    tag=data['image'],
+                    directory=data.build,
+                    tag=data.image,
                     service=service,
                 )
         if container is None:
             click.echo(f'Starting container: {name}')
             client.run(
-                image=data['image'],
-                ports=data.get('ports', {}),
+                image=data.image,
+                ports=data.ports,
                 name=name,
-                command=data.get('command', None),
-                environment=data.get('environment', {}),
+                command=data.command,
+                environment=data.environment,
                 mount_cwd=False,
                 network=ctx.obj['project_name'],
                 service=service,
@@ -103,13 +110,13 @@ def start(ctx, no_tests, no_mount, imp, prefix):
     if current_image_id != image:
         client.end_container(name)
         current_image_id = None
-    else:
-        container = client.container_get(name)
 
     if current_image_id is None:
-        command = ctx.obj.get('tests.command', True)
+        # TODO: Clean up command = True garbage.
+        # Looks like all code currently supported containerization engines use a tail, so use that if command is None
+        command = tests.command if tests.command is not None else True
         if imp is True:
-            command = ctx.obj.get('tests.import.command', None)
+            command = tests._import.command
 
         container = client.run(
             image=image,
@@ -117,17 +124,19 @@ def start(ctx, no_tests, no_mount, imp, prefix):
             name=name,
             environment=env,
             command=command,
-            ports=ctx.obj.get('tests.ports', {}),
+            ports=tests.ports,
             mount_cwd=not no_mount,
             network=ctx.obj['project_name'],
         )
 
         if imp is True:
-            for step in ctx.obj.get('tests.import.setup', []):
+            for step in tests._import.setup:
                 client.run_command(
                     container,
                     step,
                 )
+    else:
+        container = client.container_get(name)
 
     return container
 
@@ -149,9 +158,11 @@ def stop(ctx, prefix):
     """
     client = ctx.obj['client']
     project_name = ctx.obj["project_name"]
+    service: str
+    data: Service
     for service, data in ctx.obj['services'].items():
-        if 'import' in data:
-            ctx.invoke(import_, stop=True, **data['import'])
+        if data._import is not None:
+            ctx.invoke(import_, stop=True, repo=data._import.repo, ref=data._import.ref)
             continue
         name = f'{prefix}{project_name}_{service}'
         container = client.container_get(name)
@@ -294,12 +305,18 @@ def build(ctx, rebuild, tag, dockerfile, template_file, directory, service):
         teststack build --tag blah:old
     """
     if service:
+        try:
+            data = ctx.obj.get('services')[service]
+        except KeyError as e:
+            click.echo("Service {service} is not defined", err=True)
+            sys.exit(11)
         if tag is None:
             tag = f'{ctx.obj.get("prefix")}{service}:{ctx.obj.get("commit", "latest")}'
-        directory = ctx.obj.get(f'services.{service}.build')
-        buildargs = ctx.obj.get(f'services.{service}.buildargs')
+        directory = data.build
+        buildargs = data.buildargs
     else:
-        buildargs = ctx.obj.get(f'tests.buildargs')
+        tests: Tests = ctx.obj.get('tests')
+        buildargs = tests.buildargs
 
     try:
         tempstat = os.stat(os.path.join(directory, template_file))
@@ -352,21 +369,18 @@ def tag(ctx):
     click.echo(ctx.obj['tag'])
 
 
-def _process_steps(steps):
+def _process_steps(steps: dict[str, Step]) -> dict[str, dict[str, str | set]]:
     """
     Process step information from teststack.toml and convert it to a data blob
     that can be processed in order.
     """
-    commands = {}
-    for name, command in steps.items():
-        cmd = {'user': None}
-        if isinstance(command, dict):
-            cmd.update(command)
-            if 'requires' in cmd:
-                for require in cmd['requires']:
-                    commands.setdefault(require, {}).setdefault('required_by', set()).add(name)
-        else:
-            cmd.update({'command': command})
+    commands: dict[str, dict[str, str | set]] = {}
+    for name, step in steps.items():
+        cmd = {'command': step.command, 'user': step.user}
+        for required_step in step.requires:
+            commands.setdefault(required_step, {}).setdefault('required_by', set()).add(name)
+        if step.check is not None:
+            cmd['check'] = step.check
         commands.setdefault(name, {}).update(cmd)
     return commands
 
@@ -488,13 +502,13 @@ def run(ctx, step, copy, posargs):
         teststack run --step tests -- -k test_add_user tests/unit/test_users.py
     """
     container = ctx.invoke(start)
-
-    steps = ctx.obj['tests'].get('steps', {})
+    tests: Tests = ctx.obj['tests']
+    steps = tests.steps
     if step:
-        stepobj = steps.get(step, '{posargs}')
+        stepobj = steps.get(step, Step(name="default", command=['{posargs}']))
         new_steps = {step: stepobj}
-        if 'requires' in stepobj:
-            new_steps.update({s: steps[s] for s in stepobj['requires']})
+        if stepobj.requires is not None:
+            new_steps.update({s: steps[s] for s in stepobj.requires})
         steps = new_steps
     exit_code = 0
     commands = _process_steps(steps)
@@ -521,7 +535,8 @@ def status(ctx):
     client = ctx.obj['client']
     click.echo('{:_^16}|{:_^36}|{:_^16}'.format('status', 'name', 'data'))
     network_name = network = ctx.obj['project_name']
-    for service, data in ctx.obj['services'].items():
+    service: str
+    for service in ctx.obj['services'].keys():
         name = f'{ctx.obj["project_name"]}_{service}'
         container = client.get_container_data(name, network_name) or {}
         container.pop('HOST', None)
@@ -565,17 +580,19 @@ def import_(ctx, repo, ref, stop):
     runner = click.testing.CliRunner()
     if stop is True:
         click.echo(f'Stopping import environment: {path}')
-        runner.invoke(
+        result = runner.invoke(
             cli,
             [
                 f'--path={path}',
                 'stop',
                 f'--prefix={ctx.obj.get("project_name")}.',
             ],
+            catch_exceptions=False,
         )
+        click.echo(result.output)
     else:
         click.echo(f'Starting import environment: {path}')
-        runner.invoke(
+        result = runner.invoke(
             cli,
             [
                 f'--path={path}',
@@ -584,7 +601,9 @@ def import_(ctx, repo, ref, stop):
                 '--imp',
                 f'--prefix={ctx.obj.get("project_name")}.',
             ],
+            catch_exceptions=False,
         )
+        click.echo(result.output)
 
 
 @cli.command(name='copy')
@@ -593,7 +612,8 @@ def copy_(ctx):
     client = ctx.obj['client']
     name = f'{ctx.obj.get("project_name")}_tests'
     exit_code = 0
-    for src in ctx.obj.get('tests.copy', []):
+    tests: Tests = ctx.obj['tests']
+    for src in tests.copy:
         result = client.cp(name, src)
         if result is False:
             click.echo(click.style(f'Failed to retrieve {src}!', fg='red'))

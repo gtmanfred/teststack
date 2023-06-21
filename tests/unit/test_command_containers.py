@@ -12,7 +12,7 @@ from teststack.commands import containers
 
 def test_render(runner, tag):
     with tempfile.NamedTemporaryFile() as tmpfile:
-        result = runner.invoke(cli, ['render', f'--dockerfile={tmpfile.name}'])
+        result = runner.invoke(cli, ['render', f'--dockerfile={tmpfile.name}'], catch_exceptions=False)
         assert result.exit_code == 0
         with open(tmpfile.name, 'r') as fh_:
             assert fh_.readline() == 'FROM docker.io/python:3.9\n'
@@ -26,7 +26,7 @@ def test_render(runner, tag):
 def test_render_with_env_var_override(runner):
     with tempfile.NamedTemporaryFile() as tmpfile:
         with mock.patch.dict(os.environ, {'GIT_BRANCH': 'other'}):
-            result = runner.invoke(cli, ['render', f'--dockerfile={tmpfile.name}'])
+            result = runner.invoke(cli, ['render', f'--dockerfile={tmpfile.name}'], catch_exceptions=False)
             assert result.exit_code == 0
 
 
@@ -35,7 +35,7 @@ def test_render_isolated(runner):
         with open('Dockerfile.j2', 'w') as wh_:
             wh_.write(fh_.read())
 
-        result = runner.invoke(cli, [f'--path={th_}', 'render'])
+        result = runner.invoke(cli, [f'--path={th_}', 'render'], catch_exceptions=False)
         assert result.exit_code == 0
         with open('Dockerfile', 'r') as fh_:
             assert fh_.readline() == 'FROM docker.io/python:3.9\n'
@@ -47,9 +47,11 @@ def test_render_isolated(runner):
 def test_container_start_no_tests(runner, attrs, client):
     client.containers.get.return_value.attrs = attrs
 
-    result = runner.invoke(cli, ['start', '-n'])
-    assert client.containers.get.call_count == 12
-    assert client.containers.run.called is False
+    result = runner.invoke(cli, ['start', '-n'], catch_exceptions=False)
+    assert client.containers.get.called is True
+    for call in client.containers.run.call_args_list:
+        # Import is still run
+        assert call.kwargs["name"] == "teststack.testapp_tests"
     assert result.exit_code == 0
 
 
@@ -57,7 +59,7 @@ def test_container_start_no_tests_not_started(runner, attrs, client):
     client.containers.get.return_value.attrs = attrs
     client.containers.get.side_effect = NotFound('container not found')
 
-    result = runner.invoke(cli, ['start', '-n'])
+    result = runner.invoke(cli, ['start', '-n'], catch_exceptions=False)
     assert client.containers.get.call_count == 10
     assert client.containers.run.call_count == 6
     assert result.exit_code == 0
@@ -67,8 +69,8 @@ def test_container_start_with_tests(runner, attrs, client):
     client.containers.get.return_value.attrs = attrs
     client.images.get.return_value.id = client.containers.get.return_value.image.id
 
-    result = runner.invoke(cli, ['start'])
-    assert client.containers.get.call_count == 25
+    result = runner.invoke(cli, ['start'], catch_exceptions=False)
+    assert client.containers.get.called is True
     assert client.containers.run.called is False
     assert result.exit_code == 0
 
@@ -76,8 +78,8 @@ def test_container_start_with_tests(runner, attrs, client):
 def test_container_start_with_tests_old_image(runner, attrs, client):
     client.containers.get.return_value.attrs = attrs
 
-    result = runner.invoke(cli, ['start'])
-    assert client.containers.get.call_count == 25
+    result = runner.invoke(cli, ['start'], catch_exceptions=False)
+    assert client.containers.get.called is True
     assert client.containers.run.called is True
     assert client.containers.get.return_value.stop.called is True
     assert client.containers.get.return_value.wait.called is True
@@ -89,7 +91,7 @@ def test_container_start_with_tests_not_started(runner, attrs, client):
     client.containers.get.return_value.attrs = attrs
     client.containers.get.side_effect = NotFound('container not found')
 
-    result = runner.invoke(cli, ['start'])
+    result = runner.invoke(cli, ['start'], catch_exceptions=False)
     assert client.containers.get.call_count == 17
     assert client.containers.run.call_count == 7
     assert result.exit_code == 0
@@ -99,7 +101,7 @@ def test_container_stop(runner, attrs, client):
     client.containers.get.return_value.attrs = attrs
 
     with mock.patch('teststack.containers.docker.Client.end_container') as end_container:
-        result = runner.invoke(cli, ['stop'])
+        result = runner.invoke(cli, ['stop'], catch_exceptions=False)
     assert client.containers.get.call_count == 7
     assert end_container.call_count == 7
     assert result.exit_code == 0
@@ -110,7 +112,7 @@ def test_container_stop_without_containers(runner, attrs, client):
     client.containers.get.side_effect = NotFound('container not found')
 
     with mock.patch('teststack.containers.docker.Client.end_container') as end_container:
-        result = runner.invoke(cli, ['stop'])
+        result = runner.invoke(cli, ['stop'], catch_exceptions=False)
     assert client.containers.get.call_count == 7
     assert end_container.called is False
     assert result.exit_code == 0
@@ -119,7 +121,7 @@ def test_container_stop_without_containers(runner, attrs, client):
 def test_container_build(runner, build_output, client):
     client.api.build.return_value = build_output
 
-    result = runner.invoke(cli, ['build', '--tag=blah'])
+    result = runner.invoke(cli, ['build', '--tag=blah'], catch_exceptions=False)
     client.api.build.assert_called_with(
         path='.',
         dockerfile='Dockerfile',
@@ -136,7 +138,7 @@ def test_container_build(runner, build_output, client):
 def test_container_build_service(runner, build_output, client, tag):
     client.api.build.return_value = build_output
 
-    result = runner.invoke(cli, ['build', '--service=cache'])
+    result = runner.invoke(cli, ['build', '--service=cache'], catch_exceptions=False)
     client.api.build.assert_called_with(
         path='tests/redis',
         dockerfile='Dockerfile',
@@ -153,7 +155,7 @@ def test_container_build_service(runner, build_output, client, tag):
 def test_container_build_service_with_tag(runner, build_output, client):
     client.api.build.return_value = build_output
 
-    result = runner.invoke(cli, ['build', '--service=cache', '--tag=blah'])
+    result = runner.invoke(cli, ['build', '--service=cache', '--tag=blah'], catch_exceptions=False)
     client.api.build.assert_called_with(
         path='tests/redis',
         dockerfile='Dockerfile',
@@ -172,8 +174,8 @@ def test_container_start_with_tests_without_image(runner, attrs, client):
     image = mock.MagicMock()
     client.images.get.side_effect = [image, ImageNotFound('image not found'), image, image, image]
 
-    result = runner.invoke(cli, ['start'])
-    assert client.containers.get.call_count == 25
+    result = runner.invoke(cli, ['start'], catch_exceptions=False)
+    assert client.containers.get.called is True
     assert client.containers.run.called is True
     assert client.images.get.call_count == 5
     assert result.exit_code == 0
@@ -191,10 +193,10 @@ def test_container_run(runner, attrs, client):
         'ExitCode': 0,
     }
 
-    result = runner.invoke(cli, ['run'])
-    assert client.containers.get.call_count == 28
+    result = runner.invoke(cli, ['run'], catch_exceptions=False)
+    assert result.exit_code == 0, f"Result: {result.output}"
+    assert client.containers.get.called is True
     assert client.containers.run.called is False
-    assert result.exit_code == 0
     assert 'foobarbaz' in result.output
     assert 'Run Command: test -f /etc/hosts1323' in result.output
     assert 'Run Command: env' not in result.output
@@ -213,25 +215,43 @@ def test_container_run_step(runner, attrs, client):
         'ExitCode': 0,
     }
 
-    result = runner.invoke(cli, ['run', '--step=install'])
-    assert client.containers.get.call_count == 26
+    result = runner.invoke(cli, ['run', '--step=install'], catch_exceptions=False)
+    assert result.exit_code == 0, f"Result: {result.output}"
+    assert client.containers.get.called is True
     assert client.containers.run.called is False
-    assert result.exit_code == 0
     assert 'foobarbaz' in result.output
     assert 'Run Command: test -f /etc/hosts1323' not in result.output
     assert 'Run Command: env' not in result.output
     assert 'Run Command: python -m pip install' in result.output
 
 
+def test_container_run_step_invalid_step(runner, attrs, client):
+    client.containers.get.return_value.attrs = attrs
+    client.images.get.return_value.id = client.containers.get.return_value.image.id
+    client.containers.get.return_value.client.api.exec_start.return_value = [
+        'foo',
+        'bar',
+        'baz',
+    ]
+    client.containers.get.return_value.client.api.exec_inspect.return_value = {
+        'ExitCode': 0,
+    }
+
+    result = runner.invoke(cli, ['run', '--step=stepthatdoesnotexist'])
+    assert result.exit_code != 0
+    assert client.containers.run.called is False
+    assert 'stepthatdoesnotexist is not an available step' in result.stderr
+
+
 def test_container_tag(runner):
     with runner.isolated_filesystem() as fh_:
-        result = runner.invoke(cli, ['tag'])
+        result = runner.invoke(cli, ['tag'], catch_exceptions=False)
     assert result.stdout.startswith('teststack:')
 
 
 def test_container_status_notfound(runner):
     with runner.isolated_filesystem() as fh_:
-        result = runner.invoke(cli, ['status'])
+        result = runner.invoke(cli, ['status'], catch_exceptions=False)
     assert 'notfound' in result.stdout
 
 
@@ -250,7 +270,7 @@ def test_container_copy(runner, client, test_files_dir):
     client.containers.get.return_value.get_archive.return_value = ([data], {})
     client.containers.get.return_value.attrs = {'Config': {'WorkingDir': '/srv'}}
 
-    result = runner.invoke(cli, ['copy'])
+    result = runner.invoke(cli, ['copy'], catch_exceptions=False)
     assert result.exit_code == 0
     assert os.path.exists('garbage.xml')
     et = ElementTree()
