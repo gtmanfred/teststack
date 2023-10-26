@@ -154,6 +154,14 @@ class Client:
         container = self.container_get(name)
         self.client.containers.get(container).start()
 
+    def status(self, name):
+        container = self.container_get(name)
+        return self.client.containers.get(container).status
+
+    def logs(self, name):
+        container = self.container_get(name)
+        return self.client.containers.get(container).logs
+
     def image_get(self, tag):
         try:
             return self.client.images.get(self._process_image_shortname(tag)).id

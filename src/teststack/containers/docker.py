@@ -143,6 +143,12 @@ class Client:
         except docker.errors.NotFound:
             return 'notfound'
 
+    def logs(self, name):
+        try:
+            return self.client.containers.get(name).logs()
+        except docker.errors.NotFound:
+            return 'notfound'
+
     def image_get(self, tag):
         try:
             return self.client.images.get(tag).id

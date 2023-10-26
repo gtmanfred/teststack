@@ -91,6 +91,14 @@ def start(ctx, no_tests, no_mount, imp, prefix):
     if no_tests is True:
         return
 
+    for service, data in ctx.obj.get('services').items():
+        name = f'{prefix}{ctx.obj.get("project_name")}_{service}'
+        status = client.status(name)
+        if status != "running":
+            click.echo(f'Failed to start container for {service}')
+            click.echo(client.logs(name))
+            raise click.Abort
+
     env = ctx.invoke(cli.get_command(ctx, 'env'), prefix=prefix, inside=True, no_export=True, quiet=True)
     env = dict(line.split('=') for line in env)
     image = client.image_get(ctx.obj['tag'])
