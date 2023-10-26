@@ -1,12 +1,8 @@
 import sys
 
 import toml
-
-import pytest
-
 from teststack import cli
 from teststack import import_commands
-from teststack.errors import IncompatibleVersionError
 
 
 def test_import_commands():

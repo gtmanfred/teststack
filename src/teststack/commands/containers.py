@@ -22,7 +22,6 @@ import sys
 
 import click
 import jinja2
-
 from teststack import cli
 from teststack.git import get_path
 
@@ -299,7 +298,7 @@ def build(ctx, rebuild, tag, dockerfile, template_file, directory, service):
         directory = ctx.obj.get(f'services.{service}.build')
         buildargs = ctx.obj.get(f'services.{service}.buildargs')
     else:
-        buildargs = ctx.obj.get(f'tests.buildargs')
+        buildargs = ctx.obj.get('tests.buildargs')
 
     try:
         tempstat = os.stat(os.path.join(directory, template_file))
@@ -312,7 +311,7 @@ def build(ctx, rebuild, tag, dockerfile, template_file, directory, service):
         dockerstat = None
 
     if tempstat is not None and (dockerstat is None or dockerstat.st_mtime < tempstat.st_mtime):
-        with open(template_file, 'r') as th_:
+        with open(template_file) as th_:
             ctx.invoke(render, dockerfile=dockerfile, template_file=th_)
 
     client = ctx.obj['client']
@@ -520,16 +519,16 @@ def status(ctx):
     """
     client = ctx.obj['client']
     click.echo('{:_^16}|{:_^36}|{:_^16}'.format('status', 'name', 'data'))
-    network_name = network = ctx.obj['project_name']
+    network_name = ctx.obj['project_name']
     for service, data in ctx.obj['services'].items():
         name = f'{ctx.obj["project_name"]}_{service}'
         container = client.get_container_data(name, network_name) or {}
         container.pop('HOST', None)
-        click.echo('{:^16}|{:^36}|{:^16}'.format(client.status(name), name, str(container)))
+        click.echo(f'{client.status(name):^16}|{name:^36}|{str(container):^16}')
     name = f'{ctx.obj["project_name"]}_tests'
     container = client.get_container_data(name, network_name) or {}
     container.pop('HOST', None)
-    click.echo('{:^16}|{:^36}|{:^16}'.format(client.status(name), name, str(container)))
+    click.echo(f'{client.status(name):^16}|{name:^36}|{str(container):^16}')
 
 
 @cli.command(name='import')

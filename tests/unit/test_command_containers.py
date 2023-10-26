@@ -5,7 +5,6 @@ from xml.etree.ElementTree import ElementTree
 
 from docker.errors import ImageNotFound
 from docker.errors import NotFound
-
 from teststack import cli
 from teststack.commands import containers
 
@@ -14,7 +13,7 @@ def test_render(runner, tag):
     with tempfile.NamedTemporaryFile() as tmpfile:
         result = runner.invoke(cli, ['render', f'--dockerfile={tmpfile.name}'])
         assert result.exit_code == 0
-        with open(tmpfile.name, 'r') as fh_:
+        with open(tmpfile.name) as fh_:
             assert fh_.readline() == 'FROM docker.io/python:3.9\n'
             assert fh_.readline() == 'ENV PYTHON=True\n'
             assert fh_.readline() == 'WORKDIR /srv\n'
@@ -37,7 +36,7 @@ def test_render_isolated(runner):
 
         result = runner.invoke(cli, [f'--path={th_}', 'render'])
         assert result.exit_code == 0
-        with open('Dockerfile', 'r') as fh_:
+        with open('Dockerfile') as fh_:
             assert fh_.readline() == 'FROM docker.io/python:3.9\n'
             assert fh_.readline() == 'ENV PYTHON=True\n'
             assert fh_.readline() == 'WORKDIR /srv\n'
@@ -157,7 +156,7 @@ def test_container_build_service_with_tag(runner, build_output, client):
     client.api.build.assert_called_with(
         path='tests/redis',
         dockerfile='Dockerfile',
-        tag=f'blah',
+        tag='blah',
         nocache=False,
         pull=False,
         rm=True,
@@ -224,13 +223,13 @@ def test_container_run_step(runner, attrs, client):
 
 
 def test_container_tag(runner):
-    with runner.isolated_filesystem() as fh_:
+    with runner.isolated_filesystem():
         result = runner.invoke(cli, ['tag'])
     assert result.stdout.startswith('teststack:')
 
 
 def test_container_status_notfound(runner):
-    with runner.isolated_filesystem() as fh_:
+    with runner.isolated_filesystem():
         result = runner.invoke(cli, ['status'])
     assert 'notfound' in result.stdout
 
@@ -254,7 +253,7 @@ def test_container_copy(runner, client, test_files_dir):
     assert result.exit_code == 0
     assert os.path.exists('garbage.xml')
     et = ElementTree()
-    et.parse(source=f'garbage.xml')
+    et.parse(source='garbage.xml')
     assert et.find('testsuite')
 
 

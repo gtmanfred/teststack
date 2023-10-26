@@ -4,9 +4,7 @@ from unittest.mock import patch
 
 import click.testing
 import docker as docker_py
-
 import pytest
-
 from teststack import import_commands
 from teststack.containers.docker import Client
 from teststack.git import get_tag

@@ -1,15 +1,14 @@
+from app.database import db
 from flask import current_app
 from flask import jsonify
 from flask.views import MethodView
-
-from app.database import db
 
 
 def health_database_status():
     try:
         # to check database we will execute raw query
         db.session.execute("SELECT 1")
-    except Exception as e:
+    except Exception:
         return False
     return True
 
@@ -18,7 +17,7 @@ def health_cache_status():
     for cache, backend in current_app.extensions["cache"].items():
         try:
             backend._read_client.keys()
-        except Exception as e:
+        except Exception:
             return False
     return True
 
