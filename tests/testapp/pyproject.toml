@@ -11,11 +11,11 @@ Flask-SQLAlchemy = "^2.5.1"
 figenv = "^1.0.1"
 SQLAlchemy = {extras = ["postgresql_psycopg2binary"], version = "^1.4.22"}
 Flask-Caching = "^2.0.1"
-redis = "^3.5.3"
+redis = "^5.0.1"
 
 [tool.poetry.group.dev.dependencies]
-coverage = "^6.5.0"
-pytest = "^7.2.0"
+coverage = "^7.3.2"
+pytest = "^7.4.3"
 
 [tool.coverage.run]
 branch = true
