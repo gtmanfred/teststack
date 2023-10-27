@@ -87,6 +87,11 @@ def start(ctx, no_tests, no_mount, imp, prefix):
         else:
             client.start(name=name)
 
+        if client.status(name) != "running":
+            click.echo(f'Failed to start container for {service}')
+            click.echo(client.logs(name))
+            raise click.Abort
+
     if no_tests is True:
         return
 
@@ -521,6 +526,8 @@ def status(ctx):
     click.echo('{:_^16}|{:_^36}|{:_^16}'.format('status', 'name', 'data'))
     network_name = ctx.obj['project_name']
     for service, data in ctx.obj['services'].items():
+        if "import" in data:
+            continue
         name = f'{ctx.obj["project_name"]}_{service}'
         container = client.get_container_data(name, network_name) or {}
         container.pop('HOST', None)
