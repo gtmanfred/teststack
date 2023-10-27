@@ -45,52 +45,79 @@ def test_render_isolated(runner):
 
 def test_container_start_no_tests(runner, attrs, client):
     client.containers.get.return_value.attrs = attrs
+    client.containers.get.return_value.status = "running"
 
     result = runner.invoke(cli, ['start', '-n'])
-    assert client.containers.get.call_count == 12
+    assert client.containers.get.call_count == 17
     assert client.containers.run.called is False
     assert result.exit_code == 0
 
 
 def test_container_start_no_tests_not_started(runner, attrs, client):
-    client.containers.get.return_value.attrs = attrs
-    client.containers.get.side_effect = NotFound('container not found')
+    container = mock.MagicMock()
+    container.status = "running"
+    container.attrs = attrs
+    client.containers.get.side_effect = [
+        NotFound('container not found'),
+        container,
+        NotFound('container not found'),
+        container,
+        NotFound('container not found'),
+    ] + [container] * 11
 
     result = runner.invoke(cli, ['start', '-n'])
-    assert client.containers.get.call_count == 10
-    assert client.containers.run.call_count == 6
+    assert client.containers.get.call_count == 16
+    assert client.containers.run.call_count == 2
     assert result.exit_code == 0
 
 
 def test_container_start_with_tests(runner, attrs, client):
-    client.containers.get.return_value.attrs = attrs
     client.images.get.return_value.id = client.containers.get.return_value.image.id
+    client.containers.get.return_value.attrs = attrs
+    client.containers.get.return_value.status = "running"
 
     result = runner.invoke(cli, ['start'])
-    assert client.containers.get.call_count == 25
+    assert client.containers.get.call_count == 30
     assert client.containers.run.called is False
     assert result.exit_code == 0
 
 
 def test_container_start_with_tests_old_image(runner, attrs, client):
-    client.containers.get.return_value.attrs = attrs
+    container = mock.MagicMock()
+    container.attrs = attrs
+    container.status = "running"
+    client.containers.get.side_effect = [
+        NotFound('container not found'),
+        container,
+        NotFound('container not found'),
+        container,
+        NotFound('container not found'),
+    ] + [container] * 24
 
     result = runner.invoke(cli, ['start'])
-    assert client.containers.get.call_count == 25
+    assert client.containers.get.call_count == 29
     assert client.containers.run.called is True
-    assert client.containers.get.return_value.stop.called is True
-    assert client.containers.get.return_value.wait.called is True
-    client.containers.get.return_value.remove.assert_called_with(v=True)
+    assert container.stop.called is True
+    assert container.wait.called is True
+    container.remove.assert_called_with(v=True)
     assert result.exit_code == 0
 
 
 def test_container_start_with_tests_not_started(runner, attrs, client):
-    client.containers.get.return_value.attrs = attrs
-    client.containers.get.side_effect = NotFound('container not found')
+    container = mock.MagicMock()
+    container.attrs = attrs
+    container.status = "running"
+    client.containers.get.side_effect = [
+        NotFound('container not found'),
+        container,
+        NotFound('container not found'),
+        container,
+        NotFound('container not found'),
+    ] + [container] * 30
 
     result = runner.invoke(cli, ['start'])
-    assert client.containers.get.call_count == 17
-    assert client.containers.run.call_count == 7
+    assert client.containers.get.call_count == 29
+    assert client.containers.run.call_count == 3
     assert result.exit_code == 0
 
 
@@ -167,12 +194,21 @@ def test_container_build_service_with_tag(runner, build_output, client):
 
 
 def test_container_start_with_tests_without_image(runner, attrs, client):
-    client.containers.get.return_value.attrs = attrs
+    container = mock.MagicMock()
+    container.status = "running"
+    container.attrs = attrs
+    client.containers.get.side_effect = [
+        NotFound('container not found'),
+        container,
+        NotFound('container not found'),
+        container,
+        NotFound('container not found'),
+    ] + [container] * 24
     image = mock.MagicMock()
     client.images.get.side_effect = [image, ImageNotFound('image not found'), image, image, image]
 
     result = runner.invoke(cli, ['start'])
-    assert client.containers.get.call_count == 25
+    assert client.containers.get.call_count == 29
     assert client.containers.run.called is True
     assert client.images.get.call_count == 5
     assert result.exit_code == 0
@@ -180,6 +216,7 @@ def test_container_start_with_tests_without_image(runner, attrs, client):
 
 def test_container_run(runner, attrs, client):
     client.containers.get.return_value.attrs = attrs
+    client.containers.get.return_value.status = "running"
     client.images.get.return_value.id = client.containers.get.return_value.image.id
     client.containers.get.return_value.client.api.exec_start.return_value = [
         'foo',
@@ -191,7 +228,7 @@ def test_container_run(runner, attrs, client):
     }
 
     result = runner.invoke(cli, ['run'])
-    assert client.containers.get.call_count == 28
+    assert client.containers.get.call_count == 33
     assert client.containers.run.called is False
     assert result.exit_code == 0
     assert 'foobarbaz' in result.output
@@ -201,6 +238,7 @@ def test_container_run(runner, attrs, client):
 
 def test_container_run_step(runner, attrs, client):
     client.containers.get.return_value.attrs = attrs
+    client.containers.get.return_value.status = "running"
     client.images.get.return_value.id = client.containers.get.return_value.image.id
     client.containers.get.return_value.client.api.exec_start.return_value = [
         'foo',
@@ -213,7 +251,7 @@ def test_container_run_step(runner, attrs, client):
     }
 
     result = runner.invoke(cli, ['run', '--step=install'])
-    assert client.containers.get.call_count == 26
+    assert client.containers.get.call_count == 31
     assert client.containers.run.called is False
     assert result.exit_code == 0
     assert 'foobarbaz' in result.output
