@@ -2,12 +2,13 @@ from app.database import db
 from flask import current_app
 from flask import jsonify
 from flask.views import MethodView
+from sqlalchemy import text
 
 
 def health_database_status():
     try:
         # to check database we will execute raw query
-        db.session.execute("SELECT 1")
+        db.session.execute(text("SELECT 1"))
     except Exception:
         return False
     return True
