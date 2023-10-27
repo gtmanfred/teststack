@@ -1,13 +1,12 @@
 import os.path
 import pathlib
 import sys
-from packaging.version import Version
 
 import click
 import toml
+from packaging.version import Version
 
 from . import git
-from .errors import IncompatibleVersionError
 
 try:
     from importlib.metadata import entry_points

@@ -1,7 +1,4 @@
-from unittest import mock
-
 from docker.errors import NotFound
-
 from teststack import cli
 
 
