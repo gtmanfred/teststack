@@ -42,11 +42,13 @@ class DictConfig(dict):
                 pass
         return rep
 
-    def merge(self, config, inside=None):
+    def merge(self, config):
         for key in config:
             if isinstance(self.get(key), dict):
-                self.get(key).merge(config[key])
-            self[key] = config[key]
+                self[key] = self.get(key).merge(config[key])
+            else:
+                self[key] = config[key]
+        return self
 
 
 @click.group(chain=True)
