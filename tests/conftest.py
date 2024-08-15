@@ -47,20 +47,6 @@ def attrs():
 
 
 @pytest.fixture()
-def build_output():
-    chunks = []
-    with open('tests/files/build.output', 'rb') as fh_:
-        for chunk in fh_:
-            chunk = chunk.replace(b'\\r\\n', b'\r\n')
-            chunk = chunk.replace(b'\\\\', b'\\')
-            for line in chunk.split(b'\r\n'):
-                if not line:
-                    continue
-                chunks.append(json.loads(line))
-    return chunks
-
-
-@pytest.fixture()
 def main_dir():
     return pathlib.Path(__file__).parent.parent
 
@@ -84,6 +70,12 @@ def client():
     else:
         with patch('docker.DockerClient') as client:
             yield client.return_value
+
+
+@pytest.fixture()
+def build_command():
+    with patch("subprocess.run") as build:
+        yield build
 
 
 @pytest.fixture()

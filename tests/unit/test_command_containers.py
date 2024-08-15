@@ -142,55 +142,52 @@ def test_container_stop_without_containers(runner, attrs, client):
     assert result.exit_code == 0
 
 
-def test_container_build(runner, build_output, client):
-    client.api.build.return_value = build_output
-
+def test_container_build(runner, client, build_command):
     result = runner.invoke(cli, ['build', '--tag=blah'])
-    client.api.build.assert_called_with(
-        path='.',
-        dockerfile='Dockerfile',
-        tag='blah',
-        nocache=False,
-        pull=False,
-        rm=True,
-        decode=True,
-        buildargs={},
-    )
     assert result.exit_code == 0
+    build_command.assert_called_with(
+        [
+            "docker",
+            "build",
+            "--file=Dockerfile",
+            "--tag=blah",
+            "--rm",
+            ".",
+            f"--secret=id=netrc,source={os.path.expanduser('~/.netrc')}",
+        ]
+    )
 
 
-def test_container_build_service(runner, build_output, client, tag):
-    client.api.build.return_value = build_output
-
+def test_container_build_service(runner, client, tag, build_command):
     result = runner.invoke(cli, ['build', '--service=cache'])
-    client.api.build.assert_called_with(
-        path='tests/redis',
-        dockerfile='Dockerfile',
-        tag=f'cache:{tag["commit"]}',
-        nocache=False,
-        pull=False,
-        rm=True,
-        decode=True,
-        buildargs={"REDIS_VERSION": "latest"},
-    )
     assert result.exit_code == 0
+    build_command.assert_called_with(
+        [
+            "docker",
+            "build",
+            "--file=Dockerfile",
+            f"--tag=cache:{tag['commit']}",
+            "--rm",
+            "tests/redis",
+            "--build-arg=REDIS_VERSION=latest",
+        ]
+    )
 
 
-def test_container_build_service_with_tag(runner, build_output, client):
-    client.api.build.return_value = build_output
-
+def test_container_build_service_with_tag(runner, build_command, client):
     result = runner.invoke(cli, ['build', '--service=cache', '--tag=blah'])
-    client.api.build.assert_called_with(
-        path='tests/redis',
-        dockerfile='Dockerfile',
-        tag='blah',
-        nocache=False,
-        pull=False,
-        rm=True,
-        decode=True,
-        buildargs={"REDIS_VERSION": "latest"},
-    )
     assert result.exit_code == 0
+    build_command.assert_called_with(
+        [
+            "docker",
+            "build",
+            "--file=Dockerfile",
+            f"--tag=blah",
+            "--rm",
+            "tests/redis",
+            "--build-arg=REDIS_VERSION=latest",
+        ]
+    )
 
 
 def test_container_start_with_tests_without_image(runner, attrs, client):

@@ -207,22 +207,21 @@ class Client:
         secrets=None,
     ):
         command = [
-            "docker", "build",
+            "docker",
+            "build",
             f"--file={dockerfile}",
             f"--tag={tag}",
             "--rm",
             directory,
         ]
         if buildargs is not None:
-            command.extend(*buildargs.split(" "))
+            command.extend([f"--build-arg={key}={value}" for key, value in buildargs.items()])
         if rebuild is True:
             command.extend("--no-cache", "--pull")
         if secrets is not None:
             for key, value in secrets.items():
                 source = os.path.expanduser(value["source"])
-                command.append(
-                    f"--secret=id={key},source={source}"
-                )
+                command.append(f"--secret=id={key},source={source}")
         subprocess.run(command)
 
     def get_container_data(self, name, network, inside=False):

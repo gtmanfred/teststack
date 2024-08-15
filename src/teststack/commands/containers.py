@@ -74,6 +74,18 @@ def start(ctx, no_tests, no_mount, imp, prefix):
                 )
         if container is None:
             click.echo(f'Starting container: {name}')
+            mounts = data.get("mounts", None)
+            volumes = {}
+            if mounts:
+                for mount in mounts.values():
+                    volumes.update(
+                        {
+                            os.path.expanduser(mount["source"]): {
+                                "bind": mount["target"],
+                                "mode": mount.get("mode", "ro"),
+                            }
+                        }
+                    )
             client.run(
                 image=data['image'],
                 ports=data.get('ports', {}),
@@ -83,6 +95,7 @@ def start(ctx, no_tests, no_mount, imp, prefix):
                 mount_cwd=False,
                 network=ctx.obj['project_name'],
                 service=service,
+                volumes=volumes,
             )
         else:
             client.start(name=name)
@@ -118,13 +131,15 @@ def start(ctx, no_tests, no_mount, imp, prefix):
         mounts = ctx.obj.get("tests.mounts")
         volumes = {}
         if mounts:
-            for data in mounts.values():
-                volumes.update({
-                    os.path.expanduser(data["source"]): {
-                        "bind": data["target"],
-                        "mode": data.get("mode", "ro"),
+            for mount in mounts.values():
+                volumes.update(
+                    {
+                        os.path.expanduser(mount["source"]): {
+                            "bind": mount["target"],
+                            "mode": mount.get("mode", "ro"),
+                        }
                     }
-                })
+                )
 
         container = client.run(
             image=image,
@@ -314,8 +329,14 @@ def build(ctx, rebuild, tag, dockerfile, template_file, directory, service):
             tag = f'{ctx.obj.get("prefix")}{service}:{ctx.obj.get("commit", "latest")}'
         directory = ctx.obj.get(f'services.{service}.build')
         buildargs = ctx.obj.get(f'services.{service}.buildargs')
+        secrets = {
+            name: mount
+            for name, mount in ctx.obj.get(f"services.{service}.mounts", {}).items()
+            if mount["secret"] is True
+        }
     else:
         buildargs = ctx.obj.get('tests.buildargs')
+        secrets = {name: mount for name, mount in ctx.obj.get("tests.mounts", {}).items() if mount["secret"] is True}
 
     try:
         tempstat = os.stat(os.path.join(directory, template_file))
@@ -343,10 +364,7 @@ def build(ctx, rebuild, tag, dockerfile, template_file, directory, service):
         rebuild,
         directory=directory,
         buildargs=buildargs,
-        secrets={
-            name: mount for name, mount in ctx.obj.get("tests.mounts").items()
-            if mount["secret"] is True
-        },
+        secrets=secrets,
     )
     image = client.image_get(tag)
     if image is None:
