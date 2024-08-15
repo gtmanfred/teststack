@@ -3,6 +3,7 @@ import os
 import select
 import shutil
 import socket
+import subprocess
 import sys
 import tarfile
 
@@ -196,19 +197,33 @@ class Client:
                     click.echo(line, nl=False)
         return container.client.api.exec_inspect(exec_id)['ExitCode']
 
-    def build(self, dockerfile, tag, rebuild, directory='.', buildargs=None):
-        for data in self.client.api.build(
-            path=directory,
-            dockerfile=dockerfile,
-            tag=tag,
-            nocache=rebuild,
-            pull=rebuild,
-            decode=True,
-            rm=True,
-            buildargs=buildargs or {},
-        ):
-            if 'stream' in data:
-                click.echo(data['stream'], nl=False)
+    def build(
+        self,
+        dockerfile,
+        tag,
+        rebuild,
+        directory='.',
+        buildargs=None,
+        secrets=None,
+    ):
+        command = [
+            "docker", "build",
+            f"--file={dockerfile}",
+            f"--tag={tag}",
+            "--rm",
+            directory,
+        ]
+        if buildargs is not None:
+            command.extend(*buildargs.split(" "))
+        if rebuild is True:
+            command.extend("--no-cache", "--pull")
+        if secrets is not None:
+            for key, value in secrets.items():
+                source = os.path.expanduser(value["source"])
+                command.append(
+                    f"--secret=id={key},source={source}"
+                )
+        subprocess.run(command)
 
     def get_container_data(self, name, network, inside=False):
         data = {}

@@ -115,6 +115,17 @@ def start(ctx, no_tests, no_mount, imp, prefix):
         if imp is True:
             command = ctx.obj.get('tests.import.command', None)
 
+        mounts = ctx.obj.get("tests.mounts")
+        volumes = {}
+        if mounts:
+            for data in mounts.values():
+                volumes.update({
+                    os.path.expanduser(data["source"]): {
+                        "bind": data["target"],
+                        "mode": data.get("mode", "ro"),
+                    }
+                })
+
         container = client.run(
             image=image,
             stream=True,
@@ -124,6 +135,7 @@ def start(ctx, no_tests, no_mount, imp, prefix):
             ports=ctx.obj.get('tests.ports', {}),
             mount_cwd=not no_mount,
             network=ctx.obj['project_name'],
+            volumes=volumes,
         )
 
         if imp is True:
@@ -325,7 +337,17 @@ def build(ctx, rebuild, tag, dockerfile, template_file, directory, service):
         tag = ctx.obj['tag']
 
     click.echo(f'Build Image: {tag}')
-    client.build(dockerfile, tag, rebuild, directory=directory, buildargs=buildargs)
+    client.build(
+        dockerfile,
+        tag,
+        rebuild,
+        directory=directory,
+        buildargs=buildargs,
+        secrets={
+            name: mount for name, mount in ctx.obj.get("tests.mounts").items()
+            if mount["secret"] is True
+        },
+    )
     image = client.image_get(tag)
     if image is None:
         click.echo(click.style('Failed to build image!', fg='red'))

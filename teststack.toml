@@ -4,6 +4,11 @@ copy = [
     "garbage.xml",
 ]
 
+[tests.mounts.netrc]
+target = "/home/ctr-user/.netrc"
+source = "~/.netrc"
+secret = true
+
 [client]
 name = "podman"
 
