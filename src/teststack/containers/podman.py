@@ -15,6 +15,7 @@ There is an extra provided to install the ``podman`` dependency.
 
     python3 -m pip install teststack[podman]
 """
+
 import json
 import os
 import platform
