@@ -73,6 +73,7 @@ class DictConfig(dict):
     help='Prefix for docker objects.',
 )
 @click.option('--path', '-p', default=os.getcwd(), type=click.Path(exists=True), help='Directory to run teststack in.')
+@click.version_option(__version__)
 @click.pass_context
 def cli(ctx, config, local_config, project_name, path):
     ctx.ensure_object(DictConfig)
