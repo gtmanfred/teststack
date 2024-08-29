@@ -7,6 +7,7 @@ Installation
 You can install teststack using pip or pipx:
 
 .. code-block:: bash
+
     pip install teststack
     pipx install teststack
 
