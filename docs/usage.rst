@@ -2,6 +2,18 @@
 Usage
 =====
 
+Installation
+------------
+You can install teststack using pip or pipx:
+
+.. code-block:: bash
+
+    pip install teststack
+    pipx install teststack
+
+Tips
+----
+
 Tips about using teststack.
 
 All of this is extra, the basic command you should need is only ``teststack
