@@ -19,8 +19,6 @@ Teststack
 .. image:: https://readthedocs.org/projects/teststack/badge?version=latest&style=flat
     :target: https://teststack.readthedocs.org/
 
-.. image:: https://img.shields.io/lgtm/grade/python/g/gtmanfred/teststack.svg?logo=lgtm&logoWidth=18
-   :target: https://lgtm.com/projects/g/gtmanfred/teststack/context:python
 
 Test an application with infrastructure.
 
