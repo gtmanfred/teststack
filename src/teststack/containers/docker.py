@@ -217,7 +217,7 @@ class Client:
         if buildargs is not None:
             command.extend([f"--build-arg={key}={value}" for key, value in buildargs.items()])
         if rebuild is True:
-            command.extend("--no-cache", "--pull")
+            command.extend(["--no-cache", "--pull"])
         if secrets is not None:
             for key, value in secrets.items():
                 source = os.path.expanduser(value["source"])
