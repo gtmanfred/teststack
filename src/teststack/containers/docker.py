@@ -209,7 +209,7 @@ class Client:
         command = [
             "docker",
             "build",
-            f"--file={dockerfile}",
+            f"--file={directory}/{dockerfile}",
             f"--tag={tag}",
             "--rm",
             directory,
