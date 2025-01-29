@@ -149,7 +149,7 @@ def test_container_build(runner, client, build_command):
         [
             "docker",
             "build",
-            "--file=Dockerfile",
+            "--file=./Dockerfile",
             "--tag=blah",
             "--rm",
             ".",
@@ -165,7 +165,7 @@ def test_container_build_service(runner, client, tag, build_command):
         [
             "docker",
             "build",
-            "--file=Dockerfile",
+            "--file=tests/redis/Dockerfile",
             f"--tag=cache:{tag['commit']}",
             "--rm",
             "tests/redis",
@@ -181,7 +181,7 @@ def test_container_build_service_with_tag(runner, build_command, client):
         [
             "docker",
             "build",
-            "--file=Dockerfile",
+            "--file=tests/redis/Dockerfile",
             f"--tag=blah",
             "--rm",
             "tests/redis",
