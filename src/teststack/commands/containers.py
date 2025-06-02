@@ -259,7 +259,6 @@ def render(ctx, template_file, dockerfile):
         template_string = '\n'.join(
             [
                 template_string,
-                f'RUN echo "app-git-hash: {ctx.obj["commit"]} >> /etc/docker-metadata"',
                 f'ENV APP_GIT_HASH={ctx.obj["commit"]}\n',
             ]
         )
@@ -289,8 +288,9 @@ def render(ctx, template_file, dockerfile):
 @click.option('--template-file', type=click.Path(), default='Dockerfile.j2', help='template to render with jinja')
 @click.option('--directory', type=click.Path(), default='.', help='Directory to build in')
 @click.option('--service', help='Service to build image for')
+@click.option('--stage', help='Stage to build in the Dockerfile', default=None)
 @click.pass_context
-def build(ctx, rebuild, tag, dockerfile, template_file, directory, service):
+def build(ctx, rebuild, tag, dockerfile, template_file, directory, service, stage):
     """
     Build the docker image using the dockerfile.
 
@@ -320,6 +320,10 @@ def build(ctx, rebuild, tag, dockerfile, template_file, directory, service):
 
         Service specified with a ``build`` argument to build the image for.
 
+    --stage
+
+        Stage to build in the Dockerfile, if specified. Default: None
+
     .. code-block:: bash
 
         teststack build
@@ -338,6 +342,9 @@ def build(ctx, rebuild, tag, dockerfile, template_file, directory, service):
     else:
         buildargs = ctx.obj.get('tests.buildargs')
         secrets = {name: mount for name, mount in ctx.obj.get("tests.mounts", {}).items() if mount["secret"] is True}
+
+    if stage is None:
+        stage = ctx.obj.get('tests.stage', None)
 
     try:
         tempstat = os.stat(os.path.join(directory, template_file))
@@ -366,6 +373,7 @@ def build(ctx, rebuild, tag, dockerfile, template_file, directory, service):
         directory=directory,
         buildargs=buildargs,
         secrets=secrets,
+        stage=stage,
     )
     image = client.image_get(tag)
     if image is None:

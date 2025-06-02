@@ -86,8 +86,15 @@ class Client:
                 }
             )
 
+        entrypoint = {}
         if command is True:  # pragma: no branch
-            command = "sh -c 'trap \"trap - TERM; kill -s TERM -- -$$\" TERM; tail -f /dev/null & wait'"
+            entrypoint = {
+                "entrypoint": "/bin/sh",
+                "command": "-c 'trap \"trap - TERM; kill -s TERM -- -$$\" TERM; tail -f /dev/null & wait'",
+            }
+        elif command:
+            entrypoint = {"command": command}
+        click.echo(entrypoint)
 
         return self.client.containers.run(
             name=name,
@@ -96,11 +103,11 @@ class Client:
             stream=stream,
             user=user,
             ports=ports or {},
-            command=command,
             environment=environment or {},
             volumes=volumes,
             network=network,
             hostname=service,
+            **entrypoint,
         ).id
 
     def cp(self, name, src):
@@ -205,6 +212,7 @@ class Client:
         directory='.',
         buildargs=None,
         secrets=None,
+        stage=None,
     ):
         command = [
             "docker",
@@ -214,6 +222,8 @@ class Client:
             "--rm",
             directory,
         ]
+        if stage is not None:
+            command.append(f"--target={stage}")
         if buildargs is not None:
             command.extend([f"--build-arg={key}={value}" for key, value in buildargs.items()])
         if rebuild is True:
