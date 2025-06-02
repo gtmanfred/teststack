@@ -27,7 +27,7 @@ norecursedirs = ".git .tox tests/testapp"
 [tool.tox]
 legacy_tox_ini = """
 [tox]
-envlist = py38,py39,py310,py311,py312,syntax,report
+envlist = py310,py311,py312,py313,syntax,report
 skip_missing_interpreters = true
 isolated_build = True
 
