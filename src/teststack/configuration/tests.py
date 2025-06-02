@@ -1,6 +1,7 @@
 import typing
-from dataclasses import dataclass, field
 from collections import OrderedDict
+from dataclasses import dataclass
+from dataclasses import field
 
 
 @dataclass
@@ -78,6 +79,7 @@ class Tests:
     copy: List of files to copy out of the test container when the `copy` command is run.
     command: Main process to run in test container. Overrides teststack default
         (Default is to run a tail -- sh -c 'trap \"trap - TERM; kill -s TERM -- -$$\" TERM; tail -f /dev/null & wait)
+    stage: Stage to use when using multi-stage images. See user documents for more details TODO: Add user docs
     steps: List of commands to execute (in order)
     environment: List of environmental variables and values to set in the container.
     ports: List of port mappings to set for the container <Container-Port>:<Host-Port>.
@@ -93,6 +95,7 @@ class Tests:
     mount: bool = True
     copy: list[str] = field(default_factory=list)
     command: str | None = None
+    stage: str | None = None
     steps: OrderedDict[str, Step] = field(default_factory=OrderedDict)
     environment: dict[str, str] = field(default_factory=dict)
     ports: dict[str, str] = field(default_factory=dict)

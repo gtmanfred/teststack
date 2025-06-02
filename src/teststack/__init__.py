@@ -1,16 +1,14 @@
-import typing
 import os.path
 import pathlib
 import sys
-from dataclasses import asdict
 
 import click
 import toml
 from packaging.version import Version
 
 from . import git
-from .errors import IncompatibleVersionError
-from .configuration import Configuration, ClientConfiguration
+from .configuration import ClientConfiguration
+from .configuration import Configuration
 
 try:
     from importlib.metadata import entry_points

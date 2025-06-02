@@ -102,7 +102,6 @@ def test_container_start_with_tests_old_image(runner, attrs, client):
         NotFound('container not found'),
     ] + [container] * 24
 
-
     result = runner.invoke(cli, ['start'], catch_exceptions=False)
     assert client.containers.get.called is True
     assert client.containers.get.call_count == 29
@@ -125,7 +124,6 @@ def test_container_start_with_tests_not_started(runner, attrs, client):
         container,
         NotFound('container not found'),
     ] + [container] * 30
-
 
     result = runner.invoke(cli, ['start'], catch_exceptions=False)
     assert client.containers.get.call_count == 29
@@ -155,9 +153,8 @@ def test_container_stop_without_containers(runner, attrs, client):
     assert result.exit_code == 0
 
 
-
 def test_container_build(runner, client, build_command):
-    result = runner.invoke(cli, ['build', '--tag=blah'], catch_exceptions=False))
+    result = runner.invoke(cli, ['build', '--tag=blah'], catch_exceptions=False)
     assert result.exit_code == 0
     build_command.assert_called_with(
         [
@@ -172,9 +169,8 @@ def test_container_build(runner, client, build_command):
     )
 
 
-
 def test_container_build_service(runner, client, tag, build_command):
-    result = runner.invoke(cli, ['build', '--service=cache'], catch_exceptions=False))
+    result = runner.invoke(cli, ['build', '--service=cache'], catch_exceptions=False)
     assert result.exit_code == 0
     build_command.assert_called_with(
         [
@@ -197,7 +193,7 @@ def test_container_build_service_with_tag(runner, build_command, client):
             "docker",
             "build",
             "--file=tests/redis/Dockerfile",
-            f"--tag=blah",
+            "--tag=blah",
             "--rm",
             "tests/redis",
             "--build-arg=REDIS_VERSION=latest",
