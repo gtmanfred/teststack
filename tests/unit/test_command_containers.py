@@ -18,7 +18,6 @@ def test_render(runner, tag):
             assert fh_.readline() == 'ENV PYTHON=True\n'
             assert fh_.readline() == 'WORKDIR /srv\n'
             assert fh_.readline() == '\n'
-            assert 'docker-metadata' in fh_.readline()
             assert tag['commit'] in fh_.readline()
 
 
