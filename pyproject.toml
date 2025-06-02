@@ -34,11 +34,10 @@ isolated_build = True
 # Keep docs in sync with docs env and .readthedocs.yml.
 [gh-actions]
 python =
-    3.8: py38, syntax, report
-    3.9: py39, report
     3.10: py310, report
     3.11: py311, report
     3.12: py312, report
+    3.13: py313, report
 
 [testenv]
 extras = tests
