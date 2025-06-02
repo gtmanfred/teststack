@@ -94,7 +94,6 @@ class Client:
             }
         elif command:
             entrypoint = {"command": command}
-        click.echo(entrypoint)
 
         return self.client.containers.run(
             name=name,
