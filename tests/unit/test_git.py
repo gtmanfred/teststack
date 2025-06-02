@@ -1,7 +1,7 @@
-from teststack.git import get_tag
-from teststack.git import get_path
-
 from unittest.mock import patch
+
+from teststack.git import get_path
+from teststack.git import get_tag
 
 
 def test_get_tag_isolated(runner, tag):

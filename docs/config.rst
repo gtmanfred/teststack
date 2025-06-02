@@ -337,7 +337,7 @@ to be used in a format string in this section, as well as the HOST and PORT
 environment variables. These special variables correspond to the ip address of
 the container and each of the ports that have been forwarded. They will be set
 to the internal network values, or the docker network values based on if the
-``--inside`` flag to the ``env`` command. The ``--inside`` argument is used to 
+``--inside`` flag to the ``env`` command. The ``--inside`` argument is used to
 collect the environment variables to add to the testing container.
 
 service.<name>.import

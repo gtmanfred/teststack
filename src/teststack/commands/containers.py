@@ -17,13 +17,13 @@ the tests you could do the following.
 
     teststack build --rebuild run
 """
+
 import os
 import sys
 from dataclasses import asdict
 
 import click
 import jinja2
-
 from teststack import cli
 from teststack.git import get_path
 from teststack.configuration import Service, Tests
@@ -82,6 +82,18 @@ def start(ctx, no_tests, no_mount, imp, prefix):
                 )
         if container is None:
             click.echo(f'Starting container: {name}')
+            mounts = data.get("mounts", None)
+            volumes = {}
+            if mounts:
+                for mount in mounts.values():
+                    volumes.update(
+                        {
+                            os.path.expanduser(mount["source"]): {
+                                "bind": mount["target"],
+                                "mode": mount.get("mode", "ro"),
+                            }
+                        }
+                    )
             client.run(
                 image=data.image,
                 ports=data.ports,
@@ -91,9 +103,15 @@ def start(ctx, no_tests, no_mount, imp, prefix):
                 mount_cwd=False,
                 network=ctx.obj['project_name'],
                 service=service,
+                volumes=volumes,
             )
         else:
             client.start(name=name)
+
+        if client.status(name) != "running":
+            click.echo(f'Failed to start container for {service}')
+            click.echo(client.logs(name))
+            raise click.Abort
 
     if no_tests is True:
         return
@@ -118,6 +136,19 @@ def start(ctx, no_tests, no_mount, imp, prefix):
         if imp is True:
             command = tests._import.command
 
+        mounts = ctx.obj.get("tests.mounts")
+        volumes = {}
+        if mounts:
+            for mount in mounts.values():
+                volumes.update(
+                    {
+                        os.path.expanduser(mount["source"]): {
+                            "bind": mount["target"],
+                            "mode": mount.get("mode", "ro"),
+                        }
+                    }
+                )
+
         container = client.run(
             image=image,
             stream=True,
@@ -127,6 +158,7 @@ def start(ctx, no_tests, no_mount, imp, prefix):
             ports=tests.ports,
             mount_cwd=not no_mount,
             network=ctx.obj['project_name'],
+            volumes=volumes,
         )
 
         if imp is True:
@@ -238,7 +270,6 @@ def render(ctx, template_file, dockerfile):
         template_string = '\n'.join(
             [
                 template_string,
-                f'RUN echo "app-git-hash: {ctx.obj["commit"]} >> /etc/docker-metadata"',
                 f'ENV APP_GIT_HASH={ctx.obj["commit"]}\n',
             ]
         )
@@ -268,8 +299,9 @@ def render(ctx, template_file, dockerfile):
 @click.option('--template-file', type=click.Path(), default='Dockerfile.j2', help='template to render with jinja')
 @click.option('--directory', type=click.Path(), default='.', help='Directory to build in')
 @click.option('--service', help='Service to build image for')
+@click.option('--stage', help='Stage to build in the Dockerfile', default=None)
 @click.pass_context
-def build(ctx, rebuild, tag, dockerfile, template_file, directory, service):
+def build(ctx, rebuild, tag, dockerfile, template_file, directory, service, stage):
     """
     Build the docker image using the dockerfile.
 
@@ -299,6 +331,10 @@ def build(ctx, rebuild, tag, dockerfile, template_file, directory, service):
 
         Service specified with a ``build`` argument to build the image for.
 
+    --stage
+
+        Stage to build in the Dockerfile, if specified. Default: None
+
     .. code-block:: bash
 
         teststack build
@@ -314,9 +350,19 @@ def build(ctx, rebuild, tag, dockerfile, template_file, directory, service):
             tag = f'{ctx.obj.get("prefix")}{service}:{ctx.obj.get("commit", "latest")}'
         directory = data.build
         buildargs = data.buildargs
+        secrets = {
+            name: mount
+            for name, mount in ctx.obj.get(f"services.{service}.mounts", {}).items()
+            if mount["secret"] is True
+        }
     else:
         tests: Tests = ctx.obj.get('tests')
         buildargs = tests.buildargs
+        secrets = {name: mount for name, mount in ctx.obj.get("tests.mounts", {}).items() if mount["secret"] is True}
+
+    if stage is None:
+        stage = ctx.obj.get('tests.stage', None)
+
 
     try:
         tempstat = os.stat(os.path.join(directory, template_file))
@@ -329,7 +375,7 @@ def build(ctx, rebuild, tag, dockerfile, template_file, directory, service):
         dockerstat = None
 
     if tempstat is not None and (dockerstat is None or dockerstat.st_mtime < tempstat.st_mtime):
-        with open(template_file, 'r') as th_:
+        with open(template_file) as th_:
             ctx.invoke(render, dockerfile=dockerfile, template_file=th_)
 
     client = ctx.obj['client']
@@ -338,7 +384,15 @@ def build(ctx, rebuild, tag, dockerfile, template_file, directory, service):
         tag = ctx.obj['tag']
 
     click.echo(f'Build Image: {tag}')
-    client.build(dockerfile, tag, rebuild, directory=directory, buildargs=buildargs)
+    client.build(
+        dockerfile,
+        tag,
+        rebuild,
+        directory=directory,
+        buildargs=buildargs,
+        secrets=secrets,
+        stage=stage,
+    )
     image = client.image_get(tag)
     if image is None:
         click.echo(click.style('Failed to build image!', fg='red'))
@@ -536,15 +590,17 @@ def status(ctx):
     click.echo('{:_^16}|{:_^36}|{:_^16}'.format('status', 'name', 'data'))
     network_name = network = ctx.obj['project_name']
     service: str
-    for service in ctx.obj['services'].keys():
+    for service, data in ctx.obj['services'].items():
+        if "import" in data:
+            continue
         name = f'{ctx.obj["project_name"]}_{service}'
         container = client.get_container_data(name, network_name) or {}
         container.pop('HOST', None)
-        click.echo('{:^16}|{:^36}|{:^16}'.format(client.status(name), name, str(container)))
+        click.echo(f'{client.status(name):^16}|{name:^36}|{str(container):^16}')
     name = f'{ctx.obj["project_name"]}_tests'
     container = client.get_container_data(name, network_name) or {}
     container.pop('HOST', None)
-    click.echo('{:^16}|{:^36}|{:^16}'.format(client.status(name), name, str(container)))
+    click.echo(f'{client.status(name):^16}|{name:^36}|{str(container):^16}')
 
 
 @cli.command(name='import')

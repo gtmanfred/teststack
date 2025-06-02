@@ -1,5 +1,4 @@
 import click.testing
-
 from teststack import cli
 from teststack.git import get_path
 from teststack.configuration import Service, Tests

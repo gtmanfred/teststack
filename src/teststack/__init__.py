@@ -2,11 +2,11 @@ import typing
 import os.path
 import pathlib
 import sys
-from packaging.version import Version
 from dataclasses import asdict
 
 import click
 import toml
+from packaging.version import Version
 
 from . import git
 from .errors import IncompatibleVersionError
@@ -46,11 +46,13 @@ class DictConfig(dict):
                 pass
         return rep
 
-    def merge(self, config, inside=None):
+    def merge(self, config):
         for key in config:
             if isinstance(self.get(key), dict):
-                self.get(key).merge(config[key])
-            self[key] = config[key]
+                self[key] = self.get(key).merge(config[key])
+            else:
+                self[key] = config[key]
+        return self
 
 
 def load_configuration(path: str, base_configuration: DictConfig | None = None) -> DictConfig:
@@ -92,6 +94,7 @@ def load_configuration(path: str, base_configuration: DictConfig | None = None) 
     help='Prefix for docker objects.',
 )
 @click.option('--path', '-p', default=os.getcwd(), type=click.Path(exists=True), help='Directory to run teststack in.')
+@click.version_option(__version__)
 @click.pass_context
 def cli(ctx, config, local_config, project_name, path):
     ctx.ensure_object(DictConfig)
@@ -131,6 +134,8 @@ def cli(ctx, config, local_config, project_name, path):
     ctx.obj['client'] = get_client(configuration.client)
     ctx.obj['prefix'] = configuration.client.prefix
     ctx.obj.update(git.get_tag(prefix=configuration.client.prefix))
+    if configuration.tests.stage is not None:
+        ctx.obj["tag"] = f"{ctx.obj['tag']}-{configuration.tests.stage}"
 
 
 def get_client(client: ClientConfiguration):

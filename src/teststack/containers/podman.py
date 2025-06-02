@@ -15,6 +15,7 @@ There is an extra provided to install the ``podman`` dependency.
 
     python3 -m pip install teststack[podman]
 """
+
 import json
 import os
 import platform
@@ -153,6 +154,14 @@ class Client:
     def start(self, name):
         container = self.container_get(name)
         self.client.containers.get(container).start()
+
+    def status(self, name):
+        container = self.container_get(name)
+        return self.client.containers.get(container).status
+
+    def logs(self, name):
+        container = self.container_get(name)
+        return self.client.containers.get(container).logs
 
     def image_get(self, tag):
         try:

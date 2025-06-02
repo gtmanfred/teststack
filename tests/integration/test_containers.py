@@ -1,11 +1,9 @@
 import os
 import subprocess
 from unittest import mock
-from xml.etree.ElementTree import ElementTree
 
 import pytest
 from docker.errors import NotFound
-
 from teststack import cli
 
 

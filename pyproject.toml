@@ -1,14 +1,7 @@
-[build-system]
-requires = ["setuptools>=42", "wheel", "setuptools_scm[toml]>=3.4"]
-build-backend = "setuptools.build_meta"
-
 [tool.black]
 line-length = 119
-target-version = ['py36', 'py37', 'py38']
+target-version = ['py38', 'py39', 'py310', 'py311', 'py312']
 skip-string-normalization = true
-
-[tool.setuptools_scm]
-write_to = "src/teststack/_version.py"
 
 [tool.coverage.run]
 branch = true
@@ -16,7 +9,7 @@ omit = ["tests/"]
 source = ["teststack"]
 
 [tool.coverage.paths]
-source = ["src", ".tox/*/site-packages"]
+source = ["src", ".tox/*/lib/*site-packages"]
 
 [tool.coverage.report]
 skip_covered = false
@@ -34,17 +27,17 @@ norecursedirs = ".git .tox tests/testapp"
 [tool.tox]
 legacy_tox_ini = """
 [tox]
-envlist = py38,py39,py310,py311,syntax,report
+envlist = py310,py311,py312,py313,syntax,report
 skip_missing_interpreters = true
 isolated_build = True
 
 # Keep docs in sync with docs env and .readthedocs.yml.
 [gh-actions]
 python =
-    3.8: py38, syntax, report
-    3.9: py39, report
     3.10: py310, report
     3.11: py311, report
+    3.12: py312, report
+    3.13: py313, report
 
 [testenv]
 extras = tests
@@ -70,3 +63,78 @@ skip_install = true
 deps = black
 commands = black --check --diff --skip-string-normalization .
 """
+
+[project]
+name = "teststack"
+description = "Manage the infrastructure for running tests against"
+readme = "README.rst"
+authors = [
+    { name = "Daniel Wallace", email = "daniel@gtmanfred.com" }
+]
+license = { text = "APACHE-2.0" }
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Software Development :: Testing",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12"
+]
+requires-python = ">=3.8"
+dependencies = [
+    "docker",
+    "six",  # needed by docker
+    "click",
+    "toml",
+    "jinja2",
+    "GitPython",
+    "backports.entry-points-selectable",
+    "packaging"
+]
+dynamic = ["version"]
+
+[project.optional-dependencies]
+tests = [
+    "coverage[toml]>=5.4",
+    "pytest",
+    "pytest-pdb",
+    "poetry"
+]
+syntax = ["black"]
+dev = ["tox"]
+podman = ["podman"]
+docs = ["sphinx", "sphinx-rtd-theme"]
+
+[project.urls]
+homepage = "https://github.com/gtmanfred/teststack"
+repository = "https://github.com/gtmanfred/teststack"
+documentation = "https://teststack.readthedocs.org"
+
+[project.entry-points.console_scripts]
+teststack = "teststack:main"
+
+[project.entry-points."teststack.commands"]
+containers = "teststack.commands.containers"
+environment = "teststack.commands.environment"
+
+[project.entry-points."teststack.clients"]
+docker = "teststack.containers.docker"
+podman = "teststack.containers.podman"
+
+[tool.setuptools]
+zip-safe = false
+
+[tool.setuptools.packages.find]
+where = ["src"]
+namespaces =  true
+
+[tool.setuptools_scm]
+write_to = "src/teststack/_version.py"
+
+[build-system]
+requires = ["setuptools>=62", "setuptools-scm>=3.4", "wheel"]
+build-backend = "setuptools.build_meta"

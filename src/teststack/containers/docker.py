@@ -3,6 +3,7 @@ import os
 import select
 import shutil
 import socket
+import subprocess
 import sys
 import tarfile
 
@@ -85,8 +86,14 @@ class Client:
                 }
             )
 
+        entrypoint = {}
         if command is True:  # pragma: no branch
-            command = "sh -c 'trap \"trap - TERM; kill -s TERM -- -$$\" TERM; tail -f /dev/null & wait'"
+            entrypoint = {
+                "entrypoint": "/bin/sh",
+                "command": "-c 'trap \"trap - TERM; kill -s TERM -- -$$\" TERM; tail -f /dev/null & wait'",
+            }
+        elif command:
+            entrypoint = {"command": command}
 
         return self.client.containers.run(
             name=name,
@@ -95,11 +102,11 @@ class Client:
             stream=stream,
             user=user,
             ports=ports or {},
-            command=command,
             environment=environment or {},
             volumes=volumes,
             network=network,
             hostname=service,
+            **entrypoint,
         ).id
 
     def cp(self, name, src):
@@ -140,6 +147,12 @@ class Client:
     def status(self, name):
         try:
             return self.client.containers.get(name).status
+        except docker.errors.NotFound:
+            return 'notfound'
+
+    def logs(self, name):
+        try:
+            return self.client.containers.get(name).logs()
         except docker.errors.NotFound:
             return 'notfound'
 
@@ -190,19 +203,35 @@ class Client:
                     click.echo(line, nl=False)
         return container.client.api.exec_inspect(exec_id)['ExitCode']
 
-    def build(self, dockerfile, tag, rebuild, directory='.', buildargs=None):
-        for data in self.client.api.build(
-            path=directory,
-            dockerfile=dockerfile,
-            tag=tag,
-            nocache=rebuild,
-            pull=rebuild,
-            decode=True,
-            rm=True,
-            buildargs=buildargs or {},
-        ):
-            if 'stream' in data:
-                click.echo(data['stream'], nl=False)
+    def build(
+        self,
+        dockerfile,
+        tag,
+        rebuild,
+        directory='.',
+        buildargs=None,
+        secrets=None,
+        stage=None,
+    ):
+        command = [
+            "docker",
+            "build",
+            f"--file={directory}/{dockerfile}",
+            f"--tag={tag}",
+            "--rm",
+            directory,
+        ]
+        if stage is not None:
+            command.append(f"--target={stage}")
+        if buildargs is not None:
+            command.extend([f"--build-arg={key}={value}" for key, value in buildargs.items()])
+        if rebuild is True:
+            command.extend(["--no-cache", "--pull"])
+        if secrets is not None:
+            for key, value in secrets.items():
+                source = os.path.expanduser(value["source"])
+                command.append(f"--secret=id={key},source={source}")
+        subprocess.run(command)
 
     def get_container_data(self, name, network, inside=False):
         data = {}
