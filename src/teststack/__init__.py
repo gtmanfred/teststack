@@ -112,7 +112,7 @@ def cli(ctx, config, local_config, project_name, path):
     ctx.obj['prefix'] = config.get('client.prefix', '')
     ctx.obj.update(git.get_tag(prefix=config.get('client.prefix', '')))
     if ctx.obj.get("tests.stage", None) is not None:
-        ctx.obj["tag"] = f"{ctx.obj["tag"]}-{ctx.obj.get('tests.stage')}"
+        ctx.obj["tag"] = f"{ctx.obj['tag']}-{ctx.obj.get('tests.stage')}"
 
 
 def get_client(client):
