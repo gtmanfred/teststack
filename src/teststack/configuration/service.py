@@ -62,14 +62,14 @@ class Service:
     environment: dict[str, str] = field(default_factory=dict)
     export: dict[str, str] = field(default_factory=dict)
     buildargs: dict[str, str] | None = None
-    _import: Import | None = None
+    import_: Import | None = None
 
     @classmethod
     def load(cls, name: str, raw_configuration: dict[str, typing.Any]) -> 'Service':
         # Note: Can remove this if it's acceptable to add pydantic as a dependency
         kwargs = {"name": name}
         if "import" in raw_configuration:
-            kwargs["_import"] = Import(**raw_configuration["import"])
+            kwargs["import_"] = Import(**raw_configuration["import"])
         kwargs.update(
             {
                 k: v

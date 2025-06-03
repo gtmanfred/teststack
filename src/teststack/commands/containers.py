@@ -64,8 +64,8 @@ def start(ctx, no_tests, no_mount, imp, prefix):
     service: str
     data: Service
     for service, data in ctx.obj.get('services').items():
-        if data._import is not None:
-            ctx.invoke(import_, repo=data._import.repo, ref=data._import.ref)
+        if data.import_ is not None:
+            ctx.invoke(import_, repo=data.import_.repo, ref=data.import_.ref)
             continue
         name = f'{prefix}{ctx.obj.get("project_name")}_{service}'
         container = client.container_get(name)
@@ -192,8 +192,8 @@ def stop(ctx, prefix):
     service: str
     data: Service
     for service, data in ctx.obj['services'].items():
-        if data._import is not None:
-            ctx.invoke(import_, stop=True, repo=data._import.repo, ref=data._import.ref)
+        if data.import_ is not None:
+            ctx.invoke(import_, stop=True, repo=data.import_.repo, ref=data.import_.ref)
             continue
         name = f'{prefix}{project_name}_{service}'
         container = client.container_get(name)
@@ -587,18 +587,21 @@ def status(ctx):
     client = ctx.obj['client']
     click.echo('{:_^16}|{:_^36}|{:_^16}'.format('status', 'name', 'data'))
     network_name = ctx.obj['project_name']
-    service: str
-    for service, data in ctx.obj['services'].items():
-        if "import" in data:
+    # Service Containers
+    name: str
+    service: Service
+    for name, service in ctx.obj['services'].items():
+        if service.import_ is not None:
             continue
-        name = f'{ctx.obj["project_name"]}_{service}'
-        container = client.get_container_data(name, network_name) or {}
+        full_name = f'{ctx.obj["project_name"]}_{name}'
+        container = client.get_container_data(full_name, network_name) or {}
         container.pop('HOST', None)
-        click.echo(f'{client.status(name):^16}|{name:^36}|{str(container):^16}')
-    name = f'{ctx.obj["project_name"]}_tests'
-    container = client.get_container_data(name, network_name) or {}
+        click.echo(f'{client.status(full_name):^16}|{full_name:^36}|{str(container):^16}')
+    # Test Container
+    full_name = f'{ctx.obj["project_name"]}_tests'
+    container = client.get_container_data(full_name, network_name) or {}
     container.pop('HOST', None)
-    click.echo(f'{client.status(name):^16}|{name:^36}|{str(container):^16}')
+    click.echo(f'{client.status(full_name):^16}|{full_name:^36}|{str(container):^16}')
 
 
 @cli.command(name='import')

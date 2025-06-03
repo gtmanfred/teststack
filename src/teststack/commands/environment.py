@@ -1,7 +1,8 @@
 import click.testing
 from teststack import cli
+from teststack.configuration import Service
+from teststack.configuration import Tests
 from teststack.git import get_path
-from teststack.configuration import Service, Tests
 
 
 @cli.command()
@@ -46,8 +47,8 @@ def env(ctx, no_export, inside, quiet, prefix):
     service: str
     data: Service
     for service, data in ctx.obj.get('services').items():
-        if data._import is not None:
-            path = get_path(repo=data._import.repo, ref=data._import.ref)
+        if data.import_ is not None:
+            path = get_path(repo=data.import_.repo, ref=data.import_.ref)
             args = [
                 f'--path={path}',
                 'import-env',
