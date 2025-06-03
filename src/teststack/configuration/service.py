@@ -19,7 +19,7 @@ class Import:
 @dataclass
 class Mount:
     """
-    Defines a bind mount for a container.
+    Defines a bind or secret mount for a container.
 
     # Note: This only supports bind mounts currently, but there's no obvious reason not to extend it to include
     # the other supported types.
@@ -33,6 +33,7 @@ class Mount:
     source: str
     target: str
     mode: str = "ro"
+    secret: bool = False
 
 
 @dataclass

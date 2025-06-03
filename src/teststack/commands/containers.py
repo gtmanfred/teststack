@@ -55,6 +55,7 @@ def start(ctx, no_tests, no_mount, imp, prefix):
 
         teststack start --no-tests
     """
+    print("Invoking 'start', --no-tests", no_tests, ", --no-mount ", no_mount, ", --imp ", imp, ", --prefix ", prefix)
     client = ctx.obj.get('client')
     tests: Tests = ctx.obj.get('tests')
 
@@ -64,14 +65,15 @@ def start(ctx, no_tests, no_mount, imp, prefix):
     service: str
     data: Service
     for service, data in ctx.obj.get('services').items():
+        print("Service ", service, ":", data)
         if data.import_ is not None:
             ctx.invoke(import_, repo=data.import_.repo, ref=data.import_.ref)
             continue
         name = f'{prefix}{ctx.obj.get("project_name")}_{service}'
-        container = client.container_get(name)
         if data.build is not None:
             data.image = f'{ctx.obj.get("prefix")}{service}:{ctx.obj.get("commit", "latest")}'
             image = client.image_get(data.image)
+            print("Image: ", image)
             if image is None:
                 ctx.invoke(
                     build,
@@ -79,6 +81,8 @@ def start(ctx, no_tests, no_mount, imp, prefix):
                     tag=data.image,
                     service=service,
                 )
+        container = client.container_get(name)
+        print("Container: ", container)
         if container is None:
             click.echo(f'Starting container: {name}')
             mounts = data.mounts
@@ -341,7 +345,7 @@ def build(ctx, rebuild, tag, dockerfile, template_file, directory, service, stag
     """
     if service:
         try:
-            data = ctx.obj.get('services')[service]
+            data: Service = ctx.obj.get('services')[service]
         except KeyError:
             click.echo("Service {service} is not defined", err=True)
             sys.exit(11)
@@ -349,18 +353,15 @@ def build(ctx, rebuild, tag, dockerfile, template_file, directory, service, stag
             tag = f'{ctx.obj.get("prefix")}{service}:{ctx.obj.get("commit", "latest")}'
         directory = data.build
         buildargs = data.buildargs
-        secrets = {
-            name: mount
-            for name, mount in ctx.obj.get(f"services.{service}.mounts", {}).items()
-            if mount["secret"] is True
-        }
+        secrets = {name: mount for name, mount in data.mounts.items() if mount.secret is True} if data.mounts else {}
     else:
         tests: Tests = ctx.obj.get('tests')
         buildargs = tests.buildargs
-        secrets = {name: mount for name, mount in ctx.obj.get("tests.mounts", {}).items() if mount["secret"] is True}
+        secrets = {name: mount for name, mount in tests.mounts.items() if mount.secret is True} if tests.mounts else {}
 
     if stage is None:
-        stage = ctx.obj.get('tests.stage', None)
+        tests: Tests = ctx.obj.get('tests')
+        stage = tests.stage
 
     try:
         tempstat = os.stat(os.path.join(directory, template_file))
@@ -441,6 +442,7 @@ def _run(command, user, ctx):
     """
     Run a command in a container.
     """
+    print("Running command:", command)
     if isinstance(command, str):
         command = [command]
     exit_code = 0
@@ -516,6 +518,7 @@ def _run_command(command, ctx):
 
 def _run_commands(ctx):
     for command in ctx['commands'].values():
+        print("Command: ", command)
         command['exit_code'] = _run_command(command, ctx)
     return sum([result['exit_code'] for result in ctx['commands'].values()])
 
@@ -553,25 +556,35 @@ def run(ctx, step, copy, posargs):
         teststack run
         teststack run --step tests -- -k test_add_user tests/unit/test_users.py
     """
-    container = ctx.invoke(start)
+    print("Invoking 'run', --copy ", copy, ", --step ", step, "posargs: ", posargs)
+
+    # Load the steps to run
     tests: Tests = ctx.obj['tests']
     steps = tests.steps
     if step:
-        stepobj = steps.get(step, Step(name="default", command=['{posargs}']))
+        if step not in steps:
+            click.echo(f"{step} is not an available step", err=True)
+            sys.exit(1)
+        stepobj = steps[step]
         new_steps = {step: stepobj}
         if stepobj.requires is not None:
             new_steps.update({s: steps[s] for s in stepobj.requires})
         steps = new_steps
-    exit_code = 0
     commands = _process_steps(steps)
+    print("Loaded Commands: ", commands)
+
+    # Start up the containers
+    container = ctx.invoke(start)
+
+    # Execute the steps
     runctx = {'commands': commands, 'container': container, 'posargs': posargs, 'client': ctx.obj['client']}
     exit_code = _run_commands(runctx)
-
-    if copy is True:
-        ctx.invoke(copy_)
-
     if exit_code:
         sys.exit(exit_code)
+
+    # Copy out data
+    if copy is True:
+        ctx.invoke(copy_)
 
 
 @cli.command()
@@ -633,6 +646,7 @@ def import_(ctx, repo, ref, stop):
         teststack import --repo ./path
         teststack import --repo ssh://github.com/org/repo.git
     """
+    print("Invoking 'import', --repo", repo, ", --ref ", ref, ", --stop ", stop)
     path = get_path(repo, ref)
     runner = click.testing.CliRunner()
     if stop is True:
