@@ -17,7 +17,7 @@ from teststack.git import get_path
 @click.option('--quiet', '-q', is_flag=True, help='Do not print out information')
 @click.option('--prefix', default='', help='Prefix name of containers for import')
 @click.pass_context
-def env(ctx, no_export, inside, quiet, prefix):
+def env(ctx, no_export: bool, inside: bool, quiet: bool, prefix: str) -> list[str]:
     """
     Output the environment variables for the teststack environment.
 
@@ -101,7 +101,7 @@ def env(ctx, no_export, inside, quiet, prefix):
 @click.option('--inside', is_flag=True, default=False, help='Export variables for inside a docker container')
 @click.option('--prefix', default='', help='Prefix name of containers for import')
 @click.pass_context
-def import_env(ctx, no_export, inside, prefix):
+def import_env(ctx, no_export: bool, inside: bool, prefix: str) -> None:
     envvars = []
     client = ctx.obj['client']
     tests: Tests = ctx.obj['tests']
