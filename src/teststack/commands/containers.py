@@ -56,6 +56,12 @@ def start(ctx, no_tests, no_mount, imp, prefix):
         teststack start --no-tests
     """
     print("Invoking 'start', --no-tests", no_tests, ", --no-mount ", no_mount, ", --imp ", imp, ", --prefix ", prefix)
+
+    # Imports should not mount the current directory, or start test containers
+    if imp:
+        no_tests = True
+        no_mount = True
+
     client = ctx.obj.get('client')
     tests: Tests = ctx.obj.get('tests')
 
@@ -86,9 +92,11 @@ def start(ctx, no_tests, no_mount, imp, prefix):
         if container is None:
             click.echo(f'Starting container: {name}')
             mounts = data.mounts
+            print("Container Mounts:", mounts)
             volumes = {}
             if mounts:
                 for mount in mounts.values():
+                    print("Mount:", mount)
                     volumes.update(
                         {
                             os.path.expanduser(mount.source): {
@@ -128,9 +136,11 @@ def start(ctx, no_tests, no_mount, imp, prefix):
     name = f'{prefix}{ctx.obj.get("project_name")}_tests'
 
     current_image_id = client.container_get_current_image(name)
+    print("Current Test Container Image Id: ", current_image_id)
     if current_image_id != image:
         client.end_container(name)
         current_image_id = None
+        print("Test Container Outdated. Restarting")
 
     if current_image_id is None:
         # TODO: Clean up command = True garbage.
@@ -140,9 +150,11 @@ def start(ctx, no_tests, no_mount, imp, prefix):
             command = tests._import.command
 
         mounts = tests.mounts
+        print("Test Mounts: ", mounts)
         volumes = {}
         if mounts:
             for mount in mounts.values():
+                print("Mount: ", mount)
                 volumes.update(
                     {
                         os.path.expanduser(mount.source): {
@@ -152,6 +164,7 @@ def start(ctx, no_tests, no_mount, imp, prefix):
                     }
                 )
 
+        print("Running Test Container: ", name)
         container = client.run(
             image=image,
             stream=True,
@@ -172,6 +185,7 @@ def start(ctx, no_tests, no_mount, imp, prefix):
                 )
     else:
         container = client.container_get(name)
+        print("Found Test Container ", name, ":", container)
 
     return container
 
@@ -351,12 +365,16 @@ def build(ctx, rebuild, tag, dockerfile, template_file, directory, service, stag
             sys.exit(11)
         if tag is None:
             tag = f'{ctx.obj.get("prefix")}{service}:{ctx.obj.get("commit", "latest")}'
+        print("Service: ", data)
         directory = data.build
         buildargs = data.buildargs
+        print("Service Mounts:", data.mounts)
         secrets = {name: mount for name, mount in data.mounts.items() if mount.secret is True} if data.mounts else {}
     else:
         tests: Tests = ctx.obj.get('tests')
         buildargs = tests.buildargs
+        print("Tests: ", tests)
+        print("Test Mounts: ", tests.mounts)
         secrets = {name: mount for name, mount in tests.mounts.items() if mount.secret is True} if tests.mounts else {}
 
     if stage is None:
@@ -560,6 +578,7 @@ def run(ctx, step, copy, posargs):
 
     # Load the steps to run
     tests: Tests = ctx.obj['tests']
+    print("Tests: ", tests)
     steps = tests.steps
     if step:
         if step not in steps:
@@ -668,7 +687,6 @@ def import_(ctx, repo, ref, stop):
             [
                 f'--path={path}',
                 'start',
-                '-m',
                 '--imp',
                 f'--prefix={ctx.obj.get("project_name")}.',
             ],

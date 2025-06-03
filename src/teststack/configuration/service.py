@@ -58,7 +58,7 @@ class Service:
     image: str | None = None
     build: str | None = None
     command: str | None = None
-    mounts: dict[str, Mount] | None = None
+    mounts: dict[str, Mount] = field(default_factory=dict)
     ports: dict[str, str] = field(default_factory=dict)
     environment: dict[str, str] = field(default_factory=dict)
     export: dict[str, str] = field(default_factory=dict)
@@ -69,13 +69,15 @@ class Service:
     def load(cls, name: str, raw_configuration: dict[str, typing.Any]) -> 'Service':
         # Note: Can remove this if it's acceptable to add pydantic as a dependency
         kwargs = {"name": name}
+        if "mounts" in raw_configuration:
+            kwargs["mounts"] = {k: Mount(**v) for k, v in raw_configuration["mounts"].items()}
         if "import" in raw_configuration:
             kwargs["import_"] = Import(**raw_configuration["import"])
         kwargs.update(
             {
                 k: v
                 for k, v in raw_configuration.items()
-                if k not in ["import"] and k in cls.__dataclass_fields__  # Ignore extra fields for now
+                if k not in ["mounts", "import"] and k in cls.__dataclass_fields__  # Ignore extra fields for now
             }
         )
         return cls(**kwargs)

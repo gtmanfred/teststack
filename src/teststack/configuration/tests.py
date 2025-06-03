@@ -96,7 +96,7 @@ class Tests:
 
     min_version: str | None = None
     mount: bool = True
-    mounts: dict[str, Mount] | None = None
+    mounts: dict[str, Mount] = field(default_factory=dict)
     copy: list[str] = field(default_factory=list)
     command: str | None = None
     stage: str | None = None
@@ -116,13 +116,15 @@ class Tests:
             kwargs["min_version"] = raw_configuration["min_version"].lstrip('v')
         if "steps" in raw_configuration:
             kwargs["steps"] = {k: Step.load(k, v) for k, v in raw_configuration["steps"].items()}
+        if "mounts" in raw_configuration:
+            kwargs["mounts"] = {k: Mount(**v) for k, v in raw_configuration["mounts"].items()}
         if "import" in raw_configuration:
             kwargs["_import"] = Import(**raw_configuration["import"])
         kwargs.update(
             {
                 k: v
                 for k, v in raw_configuration.items()
-                if k not in ["min_version", "steps", "import"]
+                if k not in ["min_version", "steps", "mounts", "import"]
                 and k in cls.__dataclass_fields__  # Ignore extra fields for now
             }
         )

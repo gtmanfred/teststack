@@ -10,6 +10,7 @@ import tarfile
 import click
 import docker.errors
 
+from ..configuration.service import Mount
 from ..utils import read_from_stdin
 
 
@@ -210,7 +211,7 @@ class Client:
         rebuild,
         directory='.',
         buildargs=None,
-        secrets=None,
+        secrets: dict[Mount] = None,
         stage=None,
     ):
         command = [
@@ -228,9 +229,9 @@ class Client:
         if rebuild is True:
             command.extend(["--no-cache", "--pull"])
         if secrets is not None:
-            for key, value in secrets.items():
-                source = os.path.expanduser(value["source"])
-                command.append(f"--secret=id={key},source={source}")
+            for name, mount in secrets.items():
+                source = os.path.expanduser(mount.source)
+                command.append(f"--secret=id={name},source={source}")
         subprocess.run(command)
 
     def get_container_data(self, name, network, inside=False):
