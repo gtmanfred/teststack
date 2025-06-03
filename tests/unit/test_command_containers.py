@@ -46,16 +46,14 @@ def test_container_start_no_tests(runner, attrs, client):
     client.containers.get.return_value.attrs = attrs
     client.containers.get.return_value.status = "running"
 
-    # Mod Test
     result = runner.invoke(cli, ['start', '-n'], catch_exceptions=False)
     assert client.containers.get.called is True
+    assert client.containers.run.called is False
     for call in client.containers.run.call_args_list:
         # Import is still run
         assert call.kwargs["name"] == "teststack.testapp_tests"
-    # Master Test
-    result = runner.invoke(cli, ['start', '-n'])
+
     assert client.containers.get.call_count == 17
-    assert client.containers.run.called is False
 
     assert result.exit_code == 0
 

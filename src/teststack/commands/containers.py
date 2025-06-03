@@ -17,17 +17,16 @@ the tests you could do the following.
 
     teststack build --rebuild run
 """
-
 import os
 import sys
-from dataclasses import asdict
 
 import click
 import jinja2
 from teststack import cli
-from teststack.git import get_path
-from teststack.configuration import Service, Tests
+from teststack.configuration import Service
+from teststack.configuration import Tests
 from teststack.configuration.tests import Step
+from teststack.git import get_path
 
 
 @cli.command()
@@ -82,15 +81,15 @@ def start(ctx, no_tests, no_mount, imp, prefix):
                 )
         if container is None:
             click.echo(f'Starting container: {name}')
-            mounts = data.get("mounts", None)
+            mounts = data.mounts
             volumes = {}
             if mounts:
                 for mount in mounts.values():
                     volumes.update(
                         {
-                            os.path.expanduser(mount["source"]): {
-                                "bind": mount["target"],
-                                "mode": mount.get("mode", "ro"),
+                            os.path.expanduser(mount.source): {
+                                "bind": mount.target,
+                                "mode": mount.mode,
                             }
                         }
                     )
@@ -136,15 +135,15 @@ def start(ctx, no_tests, no_mount, imp, prefix):
         if imp is True:
             command = tests._import.command
 
-        mounts = ctx.obj.get("tests.mounts")
+        mounts = tests.mounts
         volumes = {}
         if mounts:
             for mount in mounts.values():
                 volumes.update(
                     {
-                        os.path.expanduser(mount["source"]): {
-                            "bind": mount["target"],
-                            "mode": mount.get("mode", "ro"),
+                        os.path.expanduser(mount.source): {
+                            "bind": mount.target,
+                            "mode": mount.mode,
                         }
                     }
                 )
@@ -343,7 +342,7 @@ def build(ctx, rebuild, tag, dockerfile, template_file, directory, service, stag
     if service:
         try:
             data = ctx.obj.get('services')[service]
-        except KeyError as e:
+        except KeyError:
             click.echo("Service {service} is not defined", err=True)
             sys.exit(11)
         if tag is None:
@@ -362,7 +361,6 @@ def build(ctx, rebuild, tag, dockerfile, template_file, directory, service, stag
 
     if stage is None:
         stage = ctx.obj.get('tests.stage', None)
-
 
     try:
         tempstat = os.stat(os.path.join(directory, template_file))
@@ -588,7 +586,7 @@ def status(ctx):
     """
     client = ctx.obj['client']
     click.echo('{:_^16}|{:_^36}|{:_^16}'.format('status', 'name', 'data'))
-    network_name = network = ctx.obj['project_name']
+    network_name = ctx.obj['project_name']
     service: str
     for service, data in ctx.obj['services'].items():
         if "import" in data:

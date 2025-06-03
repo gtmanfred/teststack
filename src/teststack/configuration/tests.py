@@ -3,6 +3,8 @@ from collections import OrderedDict
 from dataclasses import dataclass
 from dataclasses import field
 
+from .service import Mount
+
 
 @dataclass
 class Step:
@@ -76,6 +78,7 @@ class Tests:
 
     min_version: Minimum version of teststack that can run this configuration.
     mount: Whether to mount the current directory as a volume.
+    mounts: List of volumes to mount to the test container.
     copy: List of files to copy out of the test container when the `copy` command is run.
     command: Main process to run in test container. Overrides teststack default
         (Default is to run a tail -- sh -c 'trap \"trap - TERM; kill -s TERM -- -$$\" TERM; tail -f /dev/null & wait)
@@ -93,6 +96,7 @@ class Tests:
 
     min_version: str | None = None
     mount: bool = True
+    mounts: dict[str, Mount] | None = None
     copy: list[str] = field(default_factory=list)
     command: str | None = None
     stage: str | None = None

@@ -1,5 +1,6 @@
 import typing
-from dataclasses import dataclass, field
+from dataclasses import dataclass
+from dataclasses import field
 
 
 @dataclass
@@ -13,6 +14,25 @@ class Import:
 
     repo: str
     ref: str | None = None
+
+
+@dataclass
+class Mount:
+    """
+    Defines a bind mount for a container.
+
+    # Note: This only supports bind mounts currently, but there's no obvious reason not to extend it to include
+    # the other supported types.
+    https://docs.podman.io/en/v4.4/markdown/options/mount.html#Footnote1
+
+    source: filesystem location on host machine to mount
+    target: filesystem location in container of mount
+    mode: type of mount ('rw', 'ro') (https://docs.docker.com/engine/storage/bind-mounts)
+    """
+
+    source: str
+    target: str
+    mode: str = "ro"
 
 
 @dataclass
@@ -37,6 +57,7 @@ class Service:
     image: str | None = None
     build: str | None = None
     command: str | None = None
+    mounts: dict[str, Mount] | None = None
     ports: dict[str, str] = field(default_factory=dict)
     environment: dict[str, str] = field(default_factory=dict)
     export: dict[str, str] = field(default_factory=dict)
