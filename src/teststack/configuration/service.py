@@ -68,7 +68,7 @@ class Service:
     @classmethod
     def load(cls, name: str, raw_configuration: dict[str, typing.Any]) -> 'Service':
         # Note: Can remove this if it's acceptable to add pydantic as a dependency
-        kwargs = {"name": name}
+        kwargs: dict[str, typing.Any] = {"name": name}
         if "mounts" in raw_configuration:
             kwargs["mounts"] = {k: Mount(**v) for k, v in raw_configuration["mounts"].items()}
         if "import" in raw_configuration:

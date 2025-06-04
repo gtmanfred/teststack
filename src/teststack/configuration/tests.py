@@ -34,7 +34,7 @@ class Step:
             return cls(name=name, command=raw_configuration)
 
         # Standard configuration
-        kwargs = {"name": name}
+        kwargs: dict[str, typing.Any] = {"name": name}
         if "command" in raw_configuration:
             # Handle command being allowed as either a string or list of strings
             if isinstance(raw_configuration["command"], str):
@@ -66,7 +66,7 @@ class Import:
     setup: A list of setup commands to run in the container
     """
 
-    command: str = None
+    command: str | None = None
     setup: list[str] = field(default_factory=list)
 
 
@@ -110,7 +110,7 @@ class Tests:
     @classmethod
     def load(cls, raw_configuration: dict[str, typing.Any]) -> 'Tests':
         # Note: Can remove this if it's acceptable to add pydantic as a dependency
-        kwargs = {}
+        kwargs: dict[str, typing.Any] = {}
         if "min_version" in raw_configuration:
             # Handle striping a leading 'v'
             kwargs["min_version"] = raw_configuration["min_version"].lstrip('v')

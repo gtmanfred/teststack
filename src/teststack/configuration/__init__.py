@@ -9,10 +9,11 @@ they make to the configuration schema so that we can detect and warn the user wh
 until then we have to allow any random configuration key to support plugin configurations.
 """
 import typing
-from dataclasses import dataclass, field
+from dataclasses import dataclass
+from dataclasses import field
 
-from .tests import Tests
 from .service import Service
+from .tests import Tests
 
 
 @dataclass
@@ -46,7 +47,7 @@ class ClientConfiguration:
 class Configuration:
     client: ClientConfiguration = field(default_factory=ClientConfiguration)
     tests: Tests = field(default_factory=Tests)
-    services: dict[str, Service] = field(default_factory=list)
+    services: dict[str, Service] = field(default_factory=dict)
 
     @classmethod
     def load(cls, raw_configuration: dict[str, typing.Any]):
