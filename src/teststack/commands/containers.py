@@ -19,6 +19,7 @@ the tests you could do the following.
 """
 import os
 import sys
+from collections import OrderedDict
 
 import click
 import jinja2
@@ -377,9 +378,8 @@ def build(ctx, rebuild, tag, dockerfile, template_file, directory, service, stag
         print("Test Mounts: ", tests.mounts)
         secrets = {name: mount for name, mount in tests.mounts.items() if mount.secret is True} if tests.mounts else {}
 
-    if stage is None:
-        tests: Tests = ctx.obj.get('tests')
-        stage = tests.stage
+        if stage is None:
+            stage = tests.stage
 
     try:
         tempstat = os.stat(os.path.join(directory, template_file))
@@ -440,12 +440,13 @@ def tag(ctx):
     click.echo(ctx.obj['tag'])
 
 
+# TODO: Fix typing on this one
 def _process_steps(steps: dict[str, Step]) -> dict[str, dict[str, str | set]]:
     """
     Process step information from teststack.toml and convert it to a data blob
     that can be processed in order.
     """
-    commands: dict[str, dict[str, str | set]] = {}
+    commands: dict[str, dict[str, str | set | list | None]] = {}
     for name, step in steps.items():
         cmd = {'command': step.command, 'user': step.user}
         for required_step in step.requires:
@@ -585,7 +586,7 @@ def run(ctx, step, copy, posargs):
             click.echo(f"{step} is not an available step", err=True)
             sys.exit(1)
         stepobj = steps[step]
-        new_steps = {step: stepobj}
+        new_steps = OrderedDict({step: stepobj})
         if stepobj.requires is not None:
             new_steps.update({s: steps[s] for s in stepobj.requires})
         steps = new_steps

@@ -1,3 +1,4 @@
+import importlib.metadata
 import os.path
 import pathlib
 import sys
@@ -13,13 +14,13 @@ from .configuration import Configuration
 try:
     from importlib.metadata import entry_points
 except ImportError:
-    from backports.entry_points_selectable import entry_points
+    from backports.entry_points_selectable import entry_points  # type: ignore
 
 try:
     from ._version import version as __version__
 except ImportError:  # pragma: no cover
     try:
-        from setuptools_scm import get_version
+        from setuptools_scm import get_version  # type: ignore
 
         __version__ = get_version(root='..', relative_to=__file__)
     except ImportError:
@@ -136,31 +137,39 @@ def cli(ctx, config, local_config, project_name, path):
         ctx.obj["tag"] = f"{ctx.obj['tag']}-{configuration.tests.stage}"
 
 
-def get_client(client: ClientConfiguration):
-    group = 'teststack.clients'
-    entries = entry_points()
+def get_entry_point_group(group: str) -> list[importlib.metadata.EntryPoint]:
+    """
+    Compatability shim.
+     - Prior to Python 3.10 entry_points() returned a dict[str, list[EntryPoint]], keyed by group
+     - Python 3.10 introduced the EntryPoints class which was selectable.
+        It provided a compatability shim: when entry_points() was called without
+        arguments it returned a SelectableGroup instance that provided dictionary and EntryPoints interfaces.
+     - Python 3.12 drops compatibility and entry_points() always returns a EntryPoints instance.
 
-    if hasattr(entries, 'select'):
-        entries = entries.select(group=group)
+    In our current supported range of 3.8 - 3.12 we need to handle compatibility ourselves.
+    """
+    # Replace all usages with entry_points(group=group) once we stop supporting < 3.10
+    all_entry_points = entry_points()
+    group_entry_points: list[importlib.metadata.EntryPoint]
+
+    if hasattr(all_entry_points, 'select'):
+        # Python 3.10+, use the select interface
+        group_entry_points = all_entry_points.select(group=group)
     else:
-        entries = entries.get(group, [])
+        # Use the legacy dictionary interface
+        group_entry_points = all_entry_points.get(group, [])
+    return group_entry_points
 
+
+def get_client(client: ClientConfiguration):
     client_name = client.name
-    for entry_point in entries:
+    for entry_point in get_entry_point_group('teststack.clients'):
         if entry_point.name == client_name:
             return entry_point.load().Client(**client.kwargs)
 
 
 def import_commands():
-    group = 'teststack.commands'
-    entries = entry_points()
-
-    if hasattr(entries, 'select'):
-        entries = entries.select(group=group)
-    else:
-        entries = entries.get(group, [])
-
-    for entry_point in entries:
+    for entry_point in get_entry_point_group('teststack.commands'):
         entry_point.load()
 
 

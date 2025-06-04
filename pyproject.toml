@@ -103,7 +103,11 @@ dependencies = [
 dynamic = ["version"]
 
 [project.optional-dependencies]
-typing = ["mypy"]
+typing = [
+    "mypy",
+    "types-docker",
+    "types-toml"
+]
 tests = [
     "coverage[toml]>=5.4",
     "pytest",
