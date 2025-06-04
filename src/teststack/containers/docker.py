@@ -17,11 +17,12 @@ class Client:
     def __init__(self, **kwargs):
         context = docker.ContextAPI.get_current_context()
         if context.name == 'default':  # pragma: no branch
-            self.client = docker.from_env()
+            self.client = docker.from_env(**kwargs)
         else:
             self.client = docker.DockerClient(
                 base_url=context.Host,
                 tls=context.TLSConfig,
+                **kwargs,
             )  # pragma: no cover
 
     def end_container(self, name):
