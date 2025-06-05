@@ -17,14 +17,29 @@ the tests you could do the following.
 
     teststack build --rebuild run
 """
-
+import logging
 import os
 import sys
+from collections import OrderedDict
+from dataclasses import dataclass
 
 import click
 import jinja2
 from teststack import cli
+from teststack.configuration import Service
+from teststack.configuration import Tests
+from teststack.configuration.tests import Step
+from teststack.containers import Client
 from teststack.git import get_path
+
+logger = logging.getLogger(__name__)
+
+
+@dataclass
+class Command(Step):
+    exit_code: int | None = None
+    check_exit_code: int | None = None
+    required_by: set[str] | None = None
 
 
 @cli.command()
@@ -53,46 +68,59 @@ def start(ctx, no_tests, no_mount, imp, prefix):
 
         teststack start --no-tests
     """
-    client = ctx.obj.get('client')
-    if no_mount is not True:
-        no_mount = not ctx.obj.get('tests.mount', True)
+    logger.debug(f"Invoking 'start', --no-tests {no_tests}, --no-mount {no_mount}, --imp {imp}, --prefix {prefix}")
 
+    # Imports should not mount the current directory, or start test containers
+    if imp:
+        no_tests = True
+        no_mount = True
+
+    client: Client = ctx.obj.get('client')
+    tests: Tests = ctx.obj.get('tests')
+
+    if no_mount is not True:
+        no_mount = not tests.mount
+
+    service: str
+    data: Service
     for service, data in ctx.obj.get('services').items():
-        if 'import' in data:
-            ctx.invoke(import_, **data['import'])
+        logger.debug(f"Starting {service}: {data}")
+        if data.import_ is not None:
+            ctx.invoke(import_, repo=data.import_.repo, ref=data.import_.ref)
             continue
         name = f'{prefix}{ctx.obj.get("project_name")}_{service}'
-        container = client.container_get(name)
-        if 'build' in data:
-            data['image'] = f'{ctx.obj.get("prefix")}{service}:{ctx.obj.get("commit", "latest")}'
-            image = client.image_get(data['image'])
+        if data.build is not None:
+            data.image = f'{ctx.obj.get("prefix")}{service}:{ctx.obj.get("commit", "latest")}'
+            image = client.image_get(data.image)
             if image is None:
                 ctx.invoke(
                     build,
-                    directory=data['build'],
-                    tag=data['image'],
+                    directory=data.build,
+                    tag=data.image,
                     service=service,
                 )
+        container = client.container_get(name)
         if container is None:
             click.echo(f'Starting container: {name}')
-            mounts = data.get("mounts", None)
+            mounts = data.mounts
+            logger.debug("Container Mounts: {mounts}")
             volumes = {}
             if mounts:
                 for mount in mounts.values():
                     volumes.update(
                         {
-                            os.path.expanduser(mount["source"]): {
-                                "bind": mount["target"],
-                                "mode": mount.get("mode", "ro"),
+                            os.path.expanduser(mount.source): {
+                                "bind": mount.target,
+                                "mode": mount.mode,
                             }
                         }
                     )
             client.run(
-                image=data['image'],
-                ports=data.get('ports', {}),
+                image=data.image,
+                ports=data.ports,
                 name=name,
-                command=data.get('command', None),
-                environment=data.get('environment', {}),
+                command=data.command,
+                environment=data.environment,
                 mount_cwd=False,
                 network=ctx.obj['project_name'],
                 service=service,
@@ -121,45 +149,53 @@ def start(ctx, no_tests, no_mount, imp, prefix):
     if current_image_id != image:
         client.end_container(name)
         current_image_id = None
-    else:
-        container = client.container_get(name)
+        logger.debug("Test Container Outdated. Restarting")
 
     if current_image_id is None:
-        command = ctx.obj.get('tests.command', True)
-        if imp is True:
-            command = ctx.obj.get('tests.import.command', None)
+        click.echo(f'Starting container: {name}')
 
-        mounts = ctx.obj.get("tests.mounts")
+        command = tests.command
+        if imp is True:
+            command = tests._import.command
+
+        # Looks like all code currently supported containerization engines use a tail, so use that if command is None
+        if command is None:
+            command = "-c 'trap \"trap - TERM; kill -s TERM -- -$$\" TERM; tail -f /dev/null & wait'"
+
+        mounts = tests.mounts
+        logger.debug("Test Mounts: {mounts}")
         volumes = {}
         if mounts:
             for mount in mounts.values():
                 volumes.update(
                     {
-                        os.path.expanduser(mount["source"]): {
-                            "bind": mount["target"],
-                            "mode": mount.get("mode", "ro"),
+                        os.path.expanduser(mount.source): {
+                            "bind": mount.target,
+                            "mode": mount.mode,
                         }
                     }
                 )
-
         container = client.run(
             image=image,
             stream=True,
             name=name,
             environment=env,
             command=command,
-            ports=ctx.obj.get('tests.ports', {}),
+            ports=tests.ports,
             mount_cwd=not no_mount,
             network=ctx.obj['project_name'],
             volumes=volumes,
         )
 
         if imp is True:
-            for step in ctx.obj.get('tests.import.setup', []):
+            for step in tests._import.setup:
                 client.run_command(
                     container,
                     step,
                 )
+    else:
+        container = client.container_get(name)
+        logger.debug(f"Found Test Container {name}:{container}")
 
     return container
 
@@ -179,11 +215,13 @@ def stop(ctx, prefix):
 
         teststack stop
     """
-    client = ctx.obj['client']
+    client: Client = ctx.obj['client']
     project_name = ctx.obj["project_name"]
+    service: str
+    data: Service
     for service, data in ctx.obj['services'].items():
-        if 'import' in data:
-            ctx.invoke(import_, stop=True, **data['import'])
+        if data.import_ is not None:
+            ctx.invoke(import_, stop=True, repo=data.import_.repo, ref=data.import_.ref)
             continue
         name = f'{prefix}{project_name}_{service}'
         container = client.container_get(name)
@@ -329,22 +367,28 @@ def build(ctx, rebuild, tag, dockerfile, template_file, directory, service, stag
         teststack build
         teststack build --tag blah:old
     """
+    logger.debug(
+        f"Invoked build: --rebuild {rebuild}, --service {service}, --tag {tag}, "
+        f"--dockerfile {dockerfile}, --template-file {template_file}, --directory {directory}, --stage {stage}"
+    )
     if service:
+        try:
+            data: Service = ctx.obj.get('services')[service]
+        except KeyError:
+            click.echo("Service {service} is not defined", err=True)
+            sys.exit(11)
         if tag is None:
             tag = f'{ctx.obj.get("prefix")}{service}:{ctx.obj.get("commit", "latest")}'
-        directory = ctx.obj.get(f'services.{service}.build')
-        buildargs = ctx.obj.get(f'services.{service}.buildargs')
-        secrets = {
-            name: mount
-            for name, mount in ctx.obj.get(f"services.{service}.mounts", {}).items()
-            if mount["secret"] is True
-        }
+        directory = data.build
+        buildargs = data.buildargs
+        secrets = {name: mount for name, mount in data.mounts.items() if mount.secret is True} if data.mounts else {}
     else:
-        buildargs = ctx.obj.get('tests.buildargs')
-        secrets = {name: mount for name, mount in ctx.obj.get("tests.mounts", {}).items() if mount["secret"] is True}
+        tests: Tests = ctx.obj.get('tests')
+        buildargs = tests.buildargs
+        secrets = {name: mount for name, mount in tests.mounts.items() if mount.secret is True} if tests.mounts else {}
 
-    if stage is None:
-        stage = ctx.obj.get('tests.stage', None)
+        if stage is None:
+            stage = tests.stage
 
     try:
         tempstat = os.stat(os.path.join(directory, template_file))
@@ -360,10 +404,10 @@ def build(ctx, rebuild, tag, dockerfile, template_file, directory, service, stag
         with open(template_file) as th_:
             ctx.invoke(render, dockerfile=dockerfile, template_file=th_)
 
-    client = ctx.obj['client']
+    client: Client = ctx.obj['client']
 
     if tag is None:
-        tag = ctx.obj['tag']
+        tag: str = ctx.obj['tag']
 
     click.echo(f'Build Image: {tag}')
     client.build(
@@ -387,7 +431,7 @@ def build(ctx, rebuild, tag, dockerfile, template_file, directory, service, stag
 @click.pass_context
 @click.option('--user', '-u', default=None, nargs=1, type=click.STRING, help='User to exec to the container as')
 @click.argument('command', nargs=-1, type=click.UNPROCESSED)
-def exec(ctx, user, command):  # pragma: no cover
+def exec(ctx, user: str | None, command: bytes | str | None):  # pragma: no cover
     """
     Exec into the current tests container.
 
@@ -396,43 +440,51 @@ def exec(ctx, user, command):  # pragma: no cover
         teststack exec
     """
     container = ctx.invoke(start)
-    ctx.obj['client'].exec(container, user=user, command=command or None)
+    client: Client = ctx.obj['client']
+    client.exec(container, user=user, command=command or None)
 
 
 @cli.command()
 @click.pass_context
 def tag(ctx):
-    click.echo(ctx.obj['tag'])
+    tag: str = ctx.obj['tag']
+    click.echo(tag)
 
 
-def _process_steps(steps):
+def _process_steps(steps: dict[str, Step]) -> OrderedDict[str, Command]:
     """
-    Process step information from teststack.toml and convert it to a data blob
-    that can be processed in order.
+    Convert the steps into a set of commands
     """
-    commands = {}
-    for name, command in steps.items():
-        cmd = {'user': None}
-        if isinstance(command, dict):
-            cmd.update(command)
-            if 'requires' in cmd:
-                for require in cmd['requires']:
-                    commands.setdefault(require, {}).setdefault('required_by', set()).add(name)
-        else:
-            cmd.update({'command': command})
-        commands.setdefault(name, {}).update(cmd)
+    commands: OrderedDict[str, Command] = {}
+    # Build up the reverse relationship of steps a step is required by
+    required_by: dict[str, set[str]] = {}
+    for name, step in steps.items():
+        for required_step in step.requires:
+            required_by.setdefault(required_step, set()).add(name)
+    for name, step in steps.items():
+        commands[name] = Command(
+            name=step.name,
+            command=step.command,
+            requires=step.requires,
+            user=step.user,
+            required_by=required_by.get(name, None),
+            check=step.check,
+        )
     return commands
 
 
-def _run(command, user, ctx):
+def _run(command: str | list[str], user: str, ctx):
     """
     Run a command in a container.
+
+    Run the command(s), add the exit codes together. If there were no errors, result should be 0
     """
+    client: Client = ctx['client']
     if isinstance(command, str):
         command = [command]
     exit_code = 0
     for cmd in command:
-        exit_code += ctx['client'].run_command(
+        exit_code += client.run_command(
             ctx['container'],
             cmd.format(posargs=' '.join(ctx['posargs'])),
             user=user,
@@ -440,44 +492,67 @@ def _run(command, user, ctx):
     return exit_code
 
 
-def _do_check(command, ctx):
+def _do_check(command: Command, ctx: dict) -> int:
     """
     Evaluate a the check on a command to see if it needs to be run.
-    """
-    if 'check_exit_code' in command:
-        return command['check_exit_code']
 
-    if 'required_by' in command:
+    Attempt at plain english:
+
+    - If the check was already run, don't run it again (This is required because of the spaghetti logic)
+
+    - If the step is required by other steps.
+        - Regress for each of those steps
+        - If the last exit_code is falsely (zero) return it without running this command's check
+    ^ This whole chunk seems like a bug.
+
+    - If there is a check (ignoring we really shouldn't call a function named 'do_check' if there's no fucking check)
+        - Run the check and record the exit code
+
+    Return 1
+
+    """
+    if command.check_exit_code is not None:
+        return command.check_exit_code
+
+    if command.required_by:
         exit_code = 1
-        for required_by in command['required_by']:
+        for required_by in command.required_by:
             exit_code = _do_check(ctx['commands'][required_by], ctx)
         if not exit_code:
             return exit_code
 
-    if 'check' in command:
-        command['check_exit_code'] = _run(command['check'], command['user'], ctx)
-        return command['check_exit_code']
+    if command.check:
+        command.check_exit_code = _run(command.check, command.user, ctx)
+        return command.check_exit_code
     return 1
 
 
-def _run_command(command, ctx):
+def _run_command(command: Command, ctx) -> int:
     """
     Evaluate a the require and require_by attributes on a command to see if it
     needs to be run.
-    """
-    if 'exit_code' in command:
-        return command['exit_code']
 
-    if 'check' in command:
-        command['check_exit_code'] = result = _do_check(command, ctx)
+    Attempt at plain english:
+
+    - If the step was already run return the exit code. (This is required because of the spaghetti logic)
+
+    - If the step has a check, run it. (Ignoring the bs in do_check)
+        - If the exit code is falsey (zero) return 0......
+            - So if the check passes, don't run the command???
+    """
+    if command.exit_code is not None:
+        return command.exit_code
+
+    if command.check:
+        result = _do_check(command, ctx)
         if not result:
             return 0
 
-    if 'required_by' in command:
+    if command.required_by:
         required_by_check = False
-        for required_by in command['required_by']:
+        for required_by in command.required_by:
             cmd = ctx['commands'][required_by]
-            if 'exit_code' in cmd:
+            if cmd.exit_code is not None:
                 continue
             exit_code = _do_check(cmd, ctx)
             if exit_code == 0:
@@ -488,23 +563,24 @@ def _run_command(command, ctx):
         if required_by_check is False:
             return 0
 
-    if 'requires' in command:
+    if command.requires:
         requires_exit_code = 0
-        for require in command['requires']:
+        for require in command.requires:
             exit_code = _run_command(ctx['commands'][require], ctx)
-            ctx['commands'][require]['exit_code'] = exit_code
             requires_exit_code += exit_code
 
         if requires_exit_code:
             return requires_exit_code
 
-    return _run(command['command'], command['user'], ctx)
+    command.exit_code = _run(command.command, command.user, ctx)
+    return command.exit_code
 
 
 def _run_commands(ctx):
-    for command in ctx['commands'].values():
-        command['exit_code'] = _run_command(command, ctx)
-    return sum([result['exit_code'] for result in ctx['commands'].values()])
+    commands: dict[str, Command] = ctx['commands']
+    for command in commands.values():
+        command.exit_code = _run_command(command, ctx)
+    return sum([result.exit_code for result in ctx['commands'].values()])
 
 
 @cli.command()
@@ -518,7 +594,7 @@ def _run_commands(ctx):
 )
 @click.argument('posargs', nargs=-1, type=click.UNPROCESSED)
 @click.pass_context
-def run(ctx, step, copy, posargs):
+def run(ctx, step: str, copy: bool, posargs):
     """
     Run the specified test steps from the teststack.toml.
 
@@ -540,25 +616,36 @@ def run(ctx, step, copy, posargs):
         teststack run
         teststack run --step tests -- -k test_add_user tests/unit/test_users.py
     """
+    logger.debug(f"Invoking 'run', --copy {copy}, --step {step}, posargs: {posargs}")
+
+    # Load the steps to run
+    tests: Tests = ctx.obj['tests']
+    logger.debug(f"Test steps: {tests}")
+    steps = tests.steps
+    if step:
+        if step not in steps:
+            click.echo(f"{step} is not an available step", err=True)
+            sys.exit(1)
+        stepobj = steps[step]
+        new_steps = OrderedDict({step: stepobj})
+        if stepobj.requires is not None:
+            new_steps.update({s: steps[s] for s in stepobj.requires})
+        steps = new_steps
+    commands = _process_steps(steps)
+    logger.debug(f"Resolved commands: {commands}")
+
+    # Start up the containers
     container = ctx.invoke(start)
 
-    steps = ctx.obj['tests'].get('steps', {})
-    if step:
-        stepobj = steps.get(step, '{posargs}')
-        new_steps = {step: stepobj}
-        if 'requires' in stepobj:
-            new_steps.update({s: steps[s] for s in stepobj['requires']})
-        steps = new_steps
-    exit_code = 0
-    commands = _process_steps(steps)
+    # Execute the steps
     runctx = {'commands': commands, 'container': container, 'posargs': posargs, 'client': ctx.obj['client']}
     exit_code = _run_commands(runctx)
-
-    if copy is True:
-        ctx.invoke(copy_)
-
     if exit_code:
         sys.exit(exit_code)
+
+    # Copy out data
+    if copy is True:
+        ctx.invoke(copy_)
 
 
 @cli.command()
@@ -571,20 +658,26 @@ def status(ctx):
 
         teststack status
     """
-    client = ctx.obj['client']
+    client: Client = ctx.obj['client']
+    network_name: str = ctx.obj['project_name']
+    services: dict[str, Service] = ctx.obj['services']
+
     click.echo('{:_^16}|{:_^36}|{:_^16}'.format('status', 'name', 'data'))
-    network_name = ctx.obj['project_name']
-    for service, data in ctx.obj['services'].items():
-        if "import" in data:
+    # Service Containers
+    name: str
+    service: Service
+    for name, service in services.items():
+        if service.import_ is not None:
             continue
-        name = f'{ctx.obj["project_name"]}_{service}'
-        container = client.get_container_data(name, network_name) or {}
+        full_name = f'{ctx.obj["project_name"]}_{name}'
+        container = client.get_container_data(full_name, network_name) or {}
         container.pop('HOST', None)
-        click.echo(f'{client.status(name):^16}|{name:^36}|{str(container):^16}')
-    name = f'{ctx.obj["project_name"]}_tests'
-    container = client.get_container_data(name, network_name) or {}
+        click.echo(f'{client.status(full_name):^16}|{full_name:^36}|{str(container):^16}')
+    # Test Container
+    full_name = f'{ctx.obj["project_name"]}_tests'
+    container = client.get_container_data(full_name, network_name) or {}
     container.pop('HOST', None)
-    click.echo(f'{client.status(name):^16}|{name:^36}|{str(container):^16}')
+    click.echo(f'{client.status(full_name):^16}|{full_name:^36}|{str(container):^16}')
 
 
 @cli.command(name='import')
@@ -592,7 +685,7 @@ def status(ctx):
 @click.option('--ref', '--tag', '-t', default=None, help='Revision to checkout on a remote repo')
 @click.option('--stop', is_flag=True, help='Stop the imported containers instead')
 @click.pass_context
-def import_(ctx, repo, ref, stop):
+def import_(ctx, repo: str, ref: str | None, stop: bool):
     """
     Load up another repo or directory as a dependency service
 
@@ -616,39 +709,44 @@ def import_(ctx, repo, ref, stop):
         teststack import --repo ./path
         teststack import --repo ssh://github.com/org/repo.git
     """
+    logging.debug(f"Invoking 'import', --repo {repo}, --ref {ref}, --stop {stop}")
     path = get_path(repo, ref)
     runner = click.testing.CliRunner()
     if stop is True:
         click.echo(f'Stopping import environment: {path}')
-        runner.invoke(
+        result = runner.invoke(
             cli,
             [
                 f'--path={path}',
                 'stop',
                 f'--prefix={ctx.obj.get("project_name")}.',
             ],
+            catch_exceptions=False,
         )
+        click.echo(result.output)
     else:
         click.echo(f'Starting import environment: {path}')
-        runner.invoke(
+        result = runner.invoke(
             cli,
             [
                 f'--path={path}',
                 'start',
-                '-m',
                 '--imp',
                 f'--prefix={ctx.obj.get("project_name")}.',
             ],
+            catch_exceptions=False,
         )
+        click.echo(result.output)
 
 
 @cli.command(name='copy')
 @click.pass_context
 def copy_(ctx):
-    client = ctx.obj['client']
+    client: Client = ctx.obj['client']
     name = f'{ctx.obj.get("project_name")}_tests'
     exit_code = 0
-    for src in ctx.obj.get('tests.copy', []):
+    tests: Tests = ctx.obj['tests']
+    for src in tests.copy:
         result = client.cp(name, src)
         if result is False:
             click.echo(click.style(f'Failed to retrieve {src}!', fg='red'))
