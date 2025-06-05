@@ -66,7 +66,7 @@ class Client(ClientProtocol):
         name: str,
         image: str,
         ports: dict[str, str] | None = None,
-        command: bool | str | None = None,
+        command: str | None = None,
         environment: dict[str, str] | None = None,
         stream: bool = False,
         user: str | None = None,
@@ -91,12 +91,8 @@ class Client(ClientProtocol):
             )
 
         entrypoint = {}
-        if command is True:  # pragma: no branch
-            entrypoint = {
-                "entrypoint": "/bin/sh",
-                "command": "-c 'trap \"trap - TERM; kill -s TERM -- -$$\" TERM; tail -f /dev/null & wait'",
-            }
-        elif command:
+        if command:
+            # May need to set "entrypoint: /bin/sh"
             entrypoint = {"command": command}
 
         return self.client.containers.run(

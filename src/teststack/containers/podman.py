@@ -108,7 +108,7 @@ class Client(ClientProtocol):
         name: str,
         image: str,
         ports: dict[str, str] | None = None,
-        command: bool | str | None = None,
+        command: str | None = None,
         environment: dict[str, str] | None = None,
         stream: bool = False,
         user: str | None = None,
@@ -126,9 +126,6 @@ class Client(ClientProtocol):
                     'type': 'bind',
                 }
             )
-
-        if command is True:
-            command = ['tail', '-f', '/dev/null']
 
         if ports:
             for port, hostport in ports.items():

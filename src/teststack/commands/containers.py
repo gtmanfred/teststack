@@ -153,11 +153,14 @@ def start(ctx, no_tests, no_mount, imp, prefix):
 
     if current_image_id is None:
         click.echo(f'Starting container: {name}')
-        # TODO: Clean up command = True garbage.
-        # Looks like all code currently supported containerization engines use a tail, so use that if command is None
-        command = tests.command if tests.command is not None else True
+
+        command = tests.command
         if imp is True:
             command = tests._import.command
+
+        # Looks like all code currently supported containerization engines use a tail, so use that if command is None
+        if command is None:
+            command = "-c 'trap \"trap - TERM; kill -s TERM -- -$$\" TERM; tail -f /dev/null & wait'"
 
         mounts = tests.mounts
         logger.debug("Test Mounts: {mounts}")

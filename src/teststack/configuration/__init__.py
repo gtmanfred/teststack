@@ -23,8 +23,7 @@ class ClientConfiguration:
 
     name: identifier for a container framework.
         Teststack ships with built-in support for 'docker' and 'podman', but plugins can add others.
-    prefix: Prefix to add to image name for all built containers.
-        #TODO: Ask what the purpose of this is and why it lives in the client config.
+    prefix: Prefix to add to image name for all built containers. Predominately used for imports
 
     **All other configurations are dumped into 'kwargs'.
     See client specific configuration options for details.
