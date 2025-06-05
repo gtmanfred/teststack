@@ -1,9 +1,11 @@
 import importlib.metadata
+import logging
 import os.path
 import pathlib
 import sys
 
 import click
+import click_log
 import toml
 from packaging.version import Version
 
@@ -25,6 +27,10 @@ except ImportError:  # pragma: no cover
         __version__ = get_version(root='..', relative_to=__file__)
     except ImportError:
         __version__ = 'v0.0.1'
+
+
+logger = logging.getLogger(__name__)
+click_log.basic_config(logger)
 
 
 class DictConfig(dict):
@@ -94,6 +100,7 @@ def load_configuration(path: str, base_configuration: DictConfig | None = None) 
 )
 @click.option('--path', '-p', default=os.getcwd(), type=click.Path(exists=True), help='Directory to run teststack in.')
 @click.version_option(__version__)
+@click_log.simple_verbosity_option(logger)
 @click.pass_context
 def cli(ctx, config, local_config, project_name, path):
     ctx.ensure_object(DictConfig)

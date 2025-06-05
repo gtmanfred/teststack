@@ -17,6 +17,7 @@ the tests you could do the following.
 
     teststack build --rebuild run
 """
+import logging
 import os
 import sys
 from collections import OrderedDict
@@ -30,6 +31,8 @@ from teststack.configuration import Tests
 from teststack.configuration.tests import Step
 from teststack.containers import Client
 from teststack.git import get_path
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -65,7 +68,7 @@ def start(ctx, no_tests, no_mount, imp, prefix):
 
         teststack start --no-tests
     """
-    print("Invoking 'start', --no-tests", no_tests, ", --no-mount ", no_mount, ", --imp ", imp, ", --prefix ", prefix)
+    logger.debug(f"Invoking 'start', --no-tests {no_tests}, --no-mount {no_mount}, --imp {imp}, --prefix {prefix}")
 
     # Imports should not mount the current directory, or start test containers
     if imp:
@@ -81,7 +84,7 @@ def start(ctx, no_tests, no_mount, imp, prefix):
     service: str
     data: Service
     for service, data in ctx.obj.get('services').items():
-        print("Service ", service, ":", data)
+        logger.debug(f"Starting {service}: {data}")
         if data.import_ is not None:
             ctx.invoke(import_, repo=data.import_.repo, ref=data.import_.ref)
             continue
@@ -89,7 +92,6 @@ def start(ctx, no_tests, no_mount, imp, prefix):
         if data.build is not None:
             data.image = f'{ctx.obj.get("prefix")}{service}:{ctx.obj.get("commit", "latest")}'
             image = client.image_get(data.image)
-            print("Image: ", image)
             if image is None:
                 ctx.invoke(
                     build,
@@ -98,15 +100,13 @@ def start(ctx, no_tests, no_mount, imp, prefix):
                     service=service,
                 )
         container = client.container_get(name)
-        print("Container: ", container)
         if container is None:
             click.echo(f'Starting container: {name}')
             mounts = data.mounts
-            print("Container Mounts:", mounts)
+            logger.debug("Container Mounts: {mounts}")
             volumes = {}
             if mounts:
                 for mount in mounts.values():
-                    print("Mount:", mount)
                     volumes.update(
                         {
                             os.path.expanduser(mount.source): {
@@ -146,13 +146,13 @@ def start(ctx, no_tests, no_mount, imp, prefix):
     name = f'{prefix}{ctx.obj.get("project_name")}_tests'
 
     current_image_id = client.container_get_current_image(name)
-    print("Current Test Container Image Id: ", current_image_id)
     if current_image_id != image:
         client.end_container(name)
         current_image_id = None
-        print("Test Container Outdated. Restarting")
+        logger.debug("Test Container Outdated. Restarting")
 
     if current_image_id is None:
+        click.echo(f'Starting container: {name}')
         # TODO: Clean up command = True garbage.
         # Looks like all code currently supported containerization engines use a tail, so use that if command is None
         command = tests.command if tests.command is not None else True
@@ -160,11 +160,10 @@ def start(ctx, no_tests, no_mount, imp, prefix):
             command = tests._import.command
 
         mounts = tests.mounts
-        print("Test Mounts: ", mounts)
+        logger.debug("Test Mounts: {mounts}")
         volumes = {}
         if mounts:
             for mount in mounts.values():
-                print("Mount: ", mount)
                 volumes.update(
                     {
                         os.path.expanduser(mount.source): {
@@ -173,8 +172,6 @@ def start(ctx, no_tests, no_mount, imp, prefix):
                         }
                     }
                 )
-
-        print("Running Test Container: ", name)
         container = client.run(
             image=image,
             stream=True,
@@ -195,7 +192,7 @@ def start(ctx, no_tests, no_mount, imp, prefix):
                 )
     else:
         container = client.container_get(name)
-        print("Found Test Container ", name, ":", container)
+        logger.debug(f"Found Test Container {name}:{container}")
 
     return container
 
@@ -367,6 +364,10 @@ def build(ctx, rebuild, tag, dockerfile, template_file, directory, service, stag
         teststack build
         teststack build --tag blah:old
     """
+    logger.debug(
+        f"Invoked build: --rebuild {rebuild}, --service {service}, --tag {tag}, "
+        f"--dockerfile {dockerfile}, --template-file {template_file}, --directory {directory}, --stage {stage}"
+    )
     if service:
         try:
             data: Service = ctx.obj.get('services')[service]
@@ -375,16 +376,12 @@ def build(ctx, rebuild, tag, dockerfile, template_file, directory, service, stag
             sys.exit(11)
         if tag is None:
             tag = f'{ctx.obj.get("prefix")}{service}:{ctx.obj.get("commit", "latest")}'
-        print("Service: ", data)
         directory = data.build
         buildargs = data.buildargs
-        print("Service Mounts:", data.mounts)
         secrets = {name: mount for name, mount in data.mounts.items() if mount.secret is True} if data.mounts else {}
     else:
         tests: Tests = ctx.obj.get('tests')
         buildargs = tests.buildargs
-        print("Tests: ", tests)
-        print("Test Mounts: ", tests.mounts)
         secrets = {name: mount for name, mount in tests.mounts.items() if mount.secret is True} if tests.mounts else {}
 
         if stage is None:
@@ -479,7 +476,6 @@ def _run(command: str | list[str], user: str, ctx):
 
     Run the command(s), add the exit codes together. If there were no errors, result should be 0
     """
-    print("Running command:", command)
     client: Client = ctx['client']
     if isinstance(command, str):
         command = [command]
@@ -512,9 +508,7 @@ def _do_check(command: Command, ctx: dict) -> int:
     Return 1
 
     """
-    print("Running Check...")
     if command.check_exit_code is not None:
-        print("Check already run.")
         return command.check_exit_code
 
     if command.required_by:
@@ -522,14 +516,11 @@ def _do_check(command: Command, ctx: dict) -> int:
         for required_by in command.required_by:
             exit_code = _do_check(ctx['commands'][required_by], ctx)
         if not exit_code:
-            print("Wierd required_by shit")
             return exit_code
 
     if command.check:
         command.check_exit_code = _run(command.check, command.user, ctx)
-        print("Check run")
         return command.check_exit_code
-    print("No check run")
     return 1
 
 
@@ -585,7 +576,6 @@ def _run_command(command: Command, ctx) -> int:
 def _run_commands(ctx):
     commands: dict[str, Command] = ctx['commands']
     for command in commands.values():
-        print("Command: ", command)
         command.exit_code = _run_command(command, ctx)
     return sum([result.exit_code for result in ctx['commands'].values()])
 
@@ -623,11 +613,11 @@ def run(ctx, step: str, copy: bool, posargs):
         teststack run
         teststack run --step tests -- -k test_add_user tests/unit/test_users.py
     """
-    print("Invoking 'run', --copy ", copy, ", --step ", step, "posargs: ", posargs)
+    logger.debug(f"Invoking 'run', --copy {copy}, --step {step}, posargs: {posargs}")
 
     # Load the steps to run
     tests: Tests = ctx.obj['tests']
-    print("Tests: ", tests)
+    logger.debug(f"Test steps: {tests}")
     steps = tests.steps
     if step:
         if step not in steps:
@@ -639,7 +629,7 @@ def run(ctx, step: str, copy: bool, posargs):
             new_steps.update({s: steps[s] for s in stepobj.requires})
         steps = new_steps
     commands = _process_steps(steps)
-    print("Loaded Commands: ", commands)
+    logger.debug(f"Resolved commands: {commands}")
 
     # Start up the containers
     container = ctx.invoke(start)
@@ -716,7 +706,7 @@ def import_(ctx, repo: str, ref: str | None, stop: bool):
         teststack import --repo ./path
         teststack import --repo ssh://github.com/org/repo.git
     """
-    print("Invoking 'import', --repo", repo, ", --ref ", ref, ", --stop ", stop)
+    logging.debug(f"Invoking 'import', --repo {repo}, --ref {ref}, --stop {stop}")
     path = get_path(repo, ref)
     runner = click.testing.CliRunner()
     if stop is True:

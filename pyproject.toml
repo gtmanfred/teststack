@@ -94,6 +94,7 @@ dependencies = [
     "docker",
     "six",  # needed by docker
     "click",
+    "click-log",
     "toml",
     "jinja2",
     "GitPython",
