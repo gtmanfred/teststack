@@ -10,11 +10,12 @@ import tarfile
 import click
 import docker.errors
 
-from ..configuration.service import Mount
+from . import Client as ClientProtocol
+from . import Mount
 from ..utils import read_from_stdin
 
 
-class Client:
+class Client(ClientProtocol):
     def __init__(self, **kwargs):
         context = docker.ContextAPI.get_current_context()
         if context.name == 'default':  # pragma: no branch
@@ -25,7 +26,7 @@ class Client:
                 tls=context.TLSConfig,
             )  # pragma: no cover
 
-    def end_container(self, name):
+    def end_container(self, name: str) -> None:
         try:
             container = self.client.containers.get(name)
         except docker.errors.NotFound:
@@ -34,16 +35,18 @@ class Client:
         container.wait()
         container.remove(v=True)
 
-    def container_get(self, name):
+    def container_get(self, name: str) -> str | None:
         try:
             return self.client.containers.get(name).id
         except docker.errors.NotFound:
             return None
 
-    def container_get_current_image(self, name):
+    def container_get_current_image(self, name: str) -> str | None:
         container = self.container_get(name)
         if container:
-            return self.client.containers.get(container).image.id
+            image = self.client.containers.get(container).image
+            if image:
+                return image.id
         return None
 
     def network_get(self, names=None, ids=None):
@@ -60,17 +63,17 @@ class Client:
 
     def run(
         self,
-        name,
-        image,
-        ports=None,
-        command=None,
-        environment=None,
-        stream=False,
-        user=None,
-        volumes=None,
-        mount_cwd=False,
-        network='bridge',
-        service='tests',
+        name: str,
+        image: str,
+        ports: dict[str, str] | None = None,
+        command: bool | str | None = None,
+        environment: dict[str, str] | None = None,
+        stream: bool = False,
+        user: str | None = None,
+        volumes: dict[str, Mount] | None = None,
+        mount_cwd: bool = False,
+        network: str = 'bridge',
+        service: str = 'tests',
     ):
         networkobj = self.network_get(names=[network])
         if networkobj is None:
@@ -108,9 +111,9 @@ class Client:
             network=network,
             hostname=service,
             **entrypoint,
-        ).id
+        ).id  # type: ignore
 
-    def cp(self, name, src):
+    def cp(self, name: str, src: str):
         container = self.client.containers.get(name)
 
         if not src.startswith('/'):
@@ -135,35 +138,36 @@ class Client:
             return network['NetworkID']
         return None
 
-    def start(self, name):
+    def start(self, name: str) -> None:
         container = self.client.containers.get(name)
         for network_name, network in container.attrs['NetworkSettings']['Networks'].items():
             if not self.network_get(ids=[self._get_network_id(network)]):
-                self.client.api.disconnect_container_from_network(container.id, network_name, force=True)
+                if container.id is not None:
+                    self.client.api.disconnect_container_from_network(container.id, network_name, force=True)
                 if not self.network_get(names=[network_name]):
                     self.network_create(name=network_name)
                 self.network_get(names=[network_name]).connect(container)
         container.start()
 
-    def status(self, name):
+    def status(self, name: str) -> str:
         try:
             return self.client.containers.get(name).status
         except docker.errors.NotFound:
             return 'notfound'
 
-    def logs(self, name):
+    def logs(self, name: str) -> str:
         try:
             return self.client.containers.get(name).logs()
         except docker.errors.NotFound:
             return 'notfound'
 
-    def image_get(self, tag):
+    def image_get(self, tag: str) -> str | None:
         try:
             return self.client.images.get(tag).id
         except docker.errors.ImageNotFound:
             return None
 
-    def run_command(self, container, command, user=None):
+    def run_command(self, container: str, command: str, user: str | None = None) -> int:
         container = self.client.containers.get(container)
         click.echo(click.style(f'Run Command: {command}', fg='green'))
         terminal = shutil.get_terminal_size()
@@ -206,14 +210,14 @@ class Client:
 
     def build(
         self,
-        dockerfile,
-        tag,
-        rebuild,
-        directory='.',
-        buildargs=None,
-        secrets: dict[Mount] = None,
+        dockerfile: str,
+        tag: str,
+        rebuild: bool,
+        directory: str = '.',
+        buildargs: dict[str, str] | None = None,
+        secrets: dict[str, Mount] | None = None,
         stage=None,
-    ):
+    ) -> None:
         command = [
             "docker",
             "build",

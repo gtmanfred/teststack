@@ -15,7 +15,6 @@ There is an extra provided to install the ``podman`` dependency.
 
     python3 -m pip install teststack[podman]
 """
-
 import json
 import os
 import platform
@@ -23,10 +22,13 @@ import socket
 import subprocess
 
 import click
-import podman.errors
+import podman.errors  # type: ignore
+
+from . import Client as ClientProtocol
+from . import Mount
 
 
-class Client:
+class Client(ClientProtocol):
     def __init__(self, machine_name=None, **kwargs):
         if machine_name is not None:
             kws = self._get_connection(machine_name)
@@ -76,7 +78,7 @@ class Client:
                 }
         return {}
 
-    def end_container(self, name):
+    def end_container(self, name: str) -> None:
         try:
             container = self.client.containers.get(name)
         except podman.errors.NotFound:
@@ -89,13 +91,13 @@ class Client:
         finally:
             container.remove(v=True)
 
-    def container_get(self, name):
+    def container_get(self, name: str) -> str | None:
         try:
             return self.client.containers.get(name).id
         except podman.errors.NotFound:
             return None
 
-    def container_get_current_image(self, name):
+    def container_get_current_image(self, name: str) -> str | None:
         container = self.container_get(name)
         if container:
             return self.client.containers.get(container).image.id
@@ -103,16 +105,17 @@ class Client:
 
     def run(
         self,
-        name,
-        image,
-        ports=None,
-        command=None,
-        environment=None,
-        stream=False,
-        user=None,
-        volumes=None,
-        mount_cwd=False,
-        network=None,
+        name: str,
+        image: str,
+        ports: dict[str, str] | None = None,
+        command: bool | str | None = None,
+        environment: dict[str, str] | None = None,
+        stream: bool = False,
+        user: str | None = None,
+        volumes: dict[str, Mount] | None = None,
+        mount_cwd: bool = False,
+        network: str = None,
+        service: str = None,
     ):
         mounts = volumes or []
         if mount_cwd is True:
@@ -183,7 +186,9 @@ class Client:
             click.echo(line, nl=False)
         return exit_code
 
-    def build(self, dockerfile, tag, rebuild, directory='.', buildargs=None):
+    def build(
+        self, dockerfile: str, tag: str, rebuild: bool, directory: str = '.', buildargs: dict[str, str] = None
+    ) -> None:
         image, _ = self.client.images.build(
             path=directory,
             dockerfile=dockerfile,

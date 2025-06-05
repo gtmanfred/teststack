@@ -2,6 +2,7 @@ import click.testing
 from teststack import cli
 from teststack.configuration import Service
 from teststack.configuration import Tests
+from teststack.containers import Client
 from teststack.git import get_path
 
 
@@ -42,17 +43,19 @@ def env(ctx, no_export: bool, inside: bool, quiet: bool, prefix: str) -> list[st
         Prefixed name of containers for getting env from imports
     """
     envvars = []
-    client = ctx.obj.get('client')
+    client: Client = ctx.obj.get('client')
     tests: Tests = ctx.obj['tests']
+    services: dict[str, Service] = ctx.obj.get('services')
+    project_name: str = ctx.obj.get("project_name")
     service: str
     data: Service
-    for service, data in ctx.obj.get('services').items():
+    for service, data in services.items():
         if data.import_ is not None:
             path = get_path(repo=data.import_.repo, ref=data.import_.ref)
             args = [
                 f'--path={path}',
                 'import-env',
-                f'--prefix={ctx.obj.get("project_name")}.',
+                f'--prefix={project_name}.',
             ]
             if no_export is True:
                 args.append('--no-export')
@@ -62,8 +65,8 @@ def env(ctx, no_export: bool, inside: bool, quiet: bool, prefix: str) -> list[st
             result = runner.invoke(cli, args)
             envvars.extend([line for line in result.stdout.strip('\n').split('\n') if line])
             continue
-        name = f'{prefix}{ctx.obj.get("project_name")}_{service}'
-        container_data = client.get_container_data(name, network=ctx.obj['project_name'], inside=inside)
+        name = f'{prefix}{project_name}_{service}'
+        container_data = client.get_container_data(name, network=project_name, inside=inside)
         if container_data is None:
             continue
         container_data.update(data.environment.copy())
@@ -73,8 +76,8 @@ def env(ctx, no_export: bool, inside: bool, quiet: bool, prefix: str) -> list[st
                     container_data,
                 )
             )
-    name = f'{ctx.obj.get("project_name")}_tests'
-    container_data = client.get_container_data(name, network=ctx.obj['project_name'], inside=inside)
+    name = f'{project_name}_tests'
+    container_data = client.get_container_data(name, network=project_name, inside=inside)
     if container_data is not None:
         for key, value in tests.environment.items():
             envvars.append(
@@ -102,11 +105,13 @@ def env(ctx, no_export: bool, inside: bool, quiet: bool, prefix: str) -> list[st
 @click.option('--prefix', default='', help='Prefix name of containers for import')
 @click.pass_context
 def import_env(ctx, no_export: bool, inside: bool, prefix: str) -> None:
-    envvars = []
-    client = ctx.obj['client']
+    client: Client = ctx.obj['client']
     tests: Tests = ctx.obj['tests']
-    name = f'{prefix}{ctx.obj.get("project_name")}_tests'
-    container_data = client.get_container_data(name, network=ctx.obj['project_name'], inside=inside)
+    project_name: str = ctx.obj.get("project_name")
+
+    envvars = []
+    name = f'{prefix}{project_name}_tests'
+    container_data = client.get_container_data(name, network=project_name, inside=inside)
     if container_data is not None:
         for key, value in tests.export.items():
             envvars.append(

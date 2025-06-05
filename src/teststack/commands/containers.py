@@ -20,6 +20,7 @@ the tests you could do the following.
 import os
 import sys
 from collections import OrderedDict
+from dataclasses import dataclass
 
 import click
 import jinja2
@@ -27,7 +28,15 @@ from teststack import cli
 from teststack.configuration import Service
 from teststack.configuration import Tests
 from teststack.configuration.tests import Step
+from teststack.containers import Client
 from teststack.git import get_path
+
+
+@dataclass
+class Command(Step):
+    exit_code: int | None = None
+    check_exit_code: int | None = None
+    required_by: set[str] | None = None
 
 
 @cli.command()
@@ -63,7 +72,7 @@ def start(ctx, no_tests, no_mount, imp, prefix):
         no_tests = True
         no_mount = True
 
-    client = ctx.obj.get('client')
+    client: Client = ctx.obj.get('client')
     tests: Tests = ctx.obj.get('tests')
 
     if no_mount is not True:
@@ -206,7 +215,7 @@ def stop(ctx, prefix):
 
         teststack stop
     """
-    client = ctx.obj['client']
+    client: Client = ctx.obj['client']
     project_name = ctx.obj["project_name"]
     service: str
     data: Service
@@ -395,10 +404,10 @@ def build(ctx, rebuild, tag, dockerfile, template_file, directory, service, stag
         with open(template_file) as th_:
             ctx.invoke(render, dockerfile=dockerfile, template_file=th_)
 
-    client = ctx.obj['client']
+    client: Client = ctx.obj['client']
 
     if tag is None:
-        tag = ctx.obj['tag']
+        tag: str = ctx.obj['tag']
 
     click.echo(f'Build Image: {tag}')
     client.build(
@@ -422,7 +431,7 @@ def build(ctx, rebuild, tag, dockerfile, template_file, directory, service, stag
 @click.pass_context
 @click.option('--user', '-u', default=None, nargs=1, type=click.STRING, help='User to exec to the container as')
 @click.argument('command', nargs=-1, type=click.UNPROCESSED)
-def exec(ctx, user, command):  # pragma: no cover
+def exec(ctx, user: str | None, command: bytes | str | None):  # pragma: no cover
     """
     Exec into the current tests container.
 
@@ -431,42 +440,52 @@ def exec(ctx, user, command):  # pragma: no cover
         teststack exec
     """
     container = ctx.invoke(start)
-    ctx.obj['client'].exec(container, user=user, command=command or None)
+    client: Client = ctx.obj['client']
+    client.exec(container, user=user, command=command or None)
 
 
 @cli.command()
 @click.pass_context
 def tag(ctx):
-    click.echo(ctx.obj['tag'])
+    tag: str = ctx.obj['tag']
+    click.echo(tag)
 
 
-# TODO: Fix typing on this one
-def _process_steps(steps: dict[str, Step]) -> dict[str, dict[str, str | set]]:
+def _process_steps(steps: dict[str, Step]) -> OrderedDict[str, Command]:
     """
-    Process step information from teststack.toml and convert it to a data blob
-    that can be processed in order.
+    Convert the steps into a set of commands
     """
-    commands: dict[str, dict[str, str | set | list | None]] = {}
+    commands: OrderedDict[str, Command] = {}
+    # Build up the reverse relationship of steps a step is required by
+    required_by: dict[str, set[str]] = {}
     for name, step in steps.items():
-        cmd = {'command': step.command, 'user': step.user}
         for required_step in step.requires:
-            commands.setdefault(required_step, {}).setdefault('required_by', set()).add(name)
-        if step.check is not None:
-            cmd['check'] = step.check
-        commands.setdefault(name, {}).update(cmd)
+            required_by.setdefault(required_step, set()).add(name)
+    for name, step in steps.items():
+        commands[name] = Command(
+            name=step.name,
+            command=step.command,
+            requires=step.requires,
+            user=step.user,
+            required_by=required_by.get(name, None),
+            check=step.check,
+        )
     return commands
 
 
-def _run(command, user, ctx):
+def _run(command: str | list[str], user: str, ctx):
     """
     Run a command in a container.
+
+    Run the command(s), add the exit codes together. If there were no errors, result should be 0
     """
     print("Running command:", command)
+    client: Client = ctx['client']
     if isinstance(command, str):
         command = [command]
     exit_code = 0
     for cmd in command:
-        exit_code += ctx['client'].run_command(
+        exit_code += client.run_command(
             ctx['container'],
             cmd.format(posargs=' '.join(ctx['posargs'])),
             user=user,
@@ -474,44 +493,72 @@ def _run(command, user, ctx):
     return exit_code
 
 
-def _do_check(command, ctx):
+def _do_check(command: Command, ctx: dict) -> int:
     """
     Evaluate a the check on a command to see if it needs to be run.
-    """
-    if 'check_exit_code' in command:
-        return command['check_exit_code']
 
-    if 'required_by' in command:
+    Attempt at plain english:
+
+    - If the check was already run, don't run it again (This is required because of the spaghetti logic)
+
+    - If the step is required by other steps.
+        - Regress for each of those steps
+        - If the last exit_code is falsely (zero) return it without running this command's check
+    ^ This whole chunk seems like a bug.
+
+    - If there is a check (ignoring we really shouldn't call a function named 'do_check' if there's no fucking check)
+        - Run the check and record the exit code
+
+    Return 1
+
+    """
+    print("Running Check...")
+    if command.check_exit_code is not None:
+        print("Check already run.")
+        return command.check_exit_code
+
+    if command.required_by:
         exit_code = 1
-        for required_by in command['required_by']:
+        for required_by in command.required_by:
             exit_code = _do_check(ctx['commands'][required_by], ctx)
         if not exit_code:
+            print("Wierd required_by shit")
             return exit_code
 
-    if 'check' in command:
-        command['check_exit_code'] = _run(command['check'], command['user'], ctx)
-        return command['check_exit_code']
+    if command.check:
+        command.check_exit_code = _run(command.check, command.user, ctx)
+        print("Check run")
+        return command.check_exit_code
+    print("No check run")
     return 1
 
 
-def _run_command(command, ctx):
+def _run_command(command: Command, ctx) -> int:
     """
     Evaluate a the require and require_by attributes on a command to see if it
     needs to be run.
-    """
-    if 'exit_code' in command:
-        return command['exit_code']
 
-    if 'check' in command:
-        command['check_exit_code'] = result = _do_check(command, ctx)
+    Attempt at plain english:
+
+    - If the step was already run return the exit code. (This is required because of the spaghetti logic)
+
+    - If the step has a check, run it. (Ignoring the bs in do_check)
+        - If the exit code is falsey (zero) return 0......
+            - So if the check passes, don't run the command???
+    """
+    if command.exit_code is not None:
+        return command.exit_code
+
+    if command.check:
+        result = _do_check(command, ctx)
         if not result:
             return 0
 
-    if 'required_by' in command:
+    if command.required_by:
         required_by_check = False
-        for required_by in command['required_by']:
+        for required_by in command.required_by:
             cmd = ctx['commands'][required_by]
-            if 'exit_code' in cmd:
+            if cmd.exit_code is not None:
                 continue
             exit_code = _do_check(cmd, ctx)
             if exit_code == 0:
@@ -522,24 +569,25 @@ def _run_command(command, ctx):
         if required_by_check is False:
             return 0
 
-    if 'requires' in command:
+    if command.requires:
         requires_exit_code = 0
-        for require in command['requires']:
+        for require in command.requires:
             exit_code = _run_command(ctx['commands'][require], ctx)
-            ctx['commands'][require]['exit_code'] = exit_code
             requires_exit_code += exit_code
 
         if requires_exit_code:
             return requires_exit_code
 
-    return _run(command['command'], command['user'], ctx)
+    command.exit_code = _run(command.command, command.user, ctx)
+    return command.exit_code
 
 
 def _run_commands(ctx):
-    for command in ctx['commands'].values():
+    commands: dict[str, Command] = ctx['commands']
+    for command in commands.values():
         print("Command: ", command)
-        command['exit_code'] = _run_command(command, ctx)
-    return sum([result['exit_code'] for result in ctx['commands'].values()])
+        command.exit_code = _run_command(command, ctx)
+    return sum([result.exit_code for result in ctx['commands'].values()])
 
 
 @cli.command()
@@ -553,7 +601,7 @@ def _run_commands(ctx):
 )
 @click.argument('posargs', nargs=-1, type=click.UNPROCESSED)
 @click.pass_context
-def run(ctx, step, copy, posargs):
+def run(ctx, step: str, copy: bool, posargs):
     """
     Run the specified test steps from the teststack.toml.
 
@@ -617,13 +665,15 @@ def status(ctx):
 
         teststack status
     """
-    client = ctx.obj['client']
+    client: Client = ctx.obj['client']
+    network_name: str = ctx.obj['project_name']
+    services: dict[str, Service] = ctx.obj['services']
+
     click.echo('{:_^16}|{:_^36}|{:_^16}'.format('status', 'name', 'data'))
-    network_name = ctx.obj['project_name']
     # Service Containers
     name: str
     service: Service
-    for name, service in ctx.obj['services'].items():
+    for name, service in services.items():
         if service.import_ is not None:
             continue
         full_name = f'{ctx.obj["project_name"]}_{name}'
@@ -642,7 +692,7 @@ def status(ctx):
 @click.option('--ref', '--tag', '-t', default=None, help='Revision to checkout on a remote repo')
 @click.option('--stop', is_flag=True, help='Stop the imported containers instead')
 @click.pass_context
-def import_(ctx, repo, ref, stop):
+def import_(ctx, repo: str, ref: str | None, stop: bool):
     """
     Load up another repo or directory as a dependency service
 
@@ -699,7 +749,7 @@ def import_(ctx, repo, ref, stop):
 @cli.command(name='copy')
 @click.pass_context
 def copy_(ctx):
-    client = ctx.obj['client']
+    client: Client = ctx.obj['client']
     name = f'{ctx.obj.get("project_name")}_tests'
     exit_code = 0
     tests: Tests = ctx.obj['tests']
