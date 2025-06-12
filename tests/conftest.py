@@ -13,7 +13,7 @@ from teststack.git import get_tag
 @pytest.fixture
 def runner():
     import_commands()
-    return click.testing.CliRunner()
+    return click.testing.CliRunner(mix_stderr=False)
 
 
 @pytest.fixture()
@@ -40,6 +40,9 @@ def attrs():
             'Networks': {
                 'teststack': {
                     'IPAddress': 'fakeaddress',
+                },
+                'testapp': {
+                    'IPAddress': 'faketestappaddress',
                 },
             },
         },

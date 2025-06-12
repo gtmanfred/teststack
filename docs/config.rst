@@ -236,7 +236,7 @@ tests.export
 
 Exports are environment variables to add to test containers that import this
 service repository. It exposes the same magic variables as exports below in
-servives.
+services.
 
 tests.buildargs
 ---------------
