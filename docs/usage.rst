@@ -77,7 +77,7 @@ If you are using something like the Test Runner for vscode, you can generate a
 
 .. code-block:: bash
 
-    testsack env -n > .env
+    teststack env -n > .env
 
 Or you could just source the output to run the tests against this environment
 from your cli shell.
