@@ -37,11 +37,14 @@ def test_missing_network(docker, runner, testapp_dir):
     result = runner.invoke(cli, [f'--path={testapp_dir}', 'stop', 'build', 'start', '-m'])
     assert result.exit_code == 0
 
+    networks = set()
     for container in docker.containers.list(all=True):
         container.stop()
+        for network_name in container.attrs['NetworkSettings']['Networks']:
+            networks.add(network_name)
 
-    for network_name in container.attrs['NetworkSettings']['Networks']:
-        docker.networks.get(network_name).remove()
+    assert "testapp" in networks
+    docker.networks.get("testapp").remove()
 
     result = runner.invoke(cli, [f'--path={testapp_dir}', 'start', '-m', 'stop'])
     assert result.exit_code == 0
@@ -51,18 +54,21 @@ def test_network_wrong_id(docker, runner, testapp_dir):
     result = runner.invoke(cli, [f'--path={testapp_dir}', 'stop', 'build', 'start', '-m'])
     assert result.exit_code == 0
 
+    networks = set()
     for container in docker.containers.list(all=True):
         container.stop()
+        for network_name in container.attrs['NetworkSettings']['Networks']:
+            networks.add(network_name)
 
-    for network_name in container.attrs['NetworkSettings']['Networks']:
-        docker.networks.get(network_name).remove()
-        network = docker.networks.create(network_name)
+    assert "testapp" in networks
+    docker.networks.get("testapp").remove()
+    network = docker.networks.create("testapp")
 
     result = runner.invoke(cli, [f'--path={testapp_dir}', 'start', '-m'])
     assert result.exit_code == 0
 
     container = docker.containers.get('testapp_tests')
-    testnet = container.attrs['NetworkSettings']['Networks'][network_name]
+    testnet = container.attrs['NetworkSettings']['Networks']["testapp"]
     if 'NetworkId' in testnet:
         assert testnet['NetworkId'] == network.id
     if 'NetworkID' in testnet:
